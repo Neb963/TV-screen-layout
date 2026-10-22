@@ -15,7 +15,7 @@ function atlantic() {
     rect('Accent underline',0,94,1920,6,channel.accent),
     txt('Channel name','ATLANTIC',44,9,525,78,63,'#ffffff',{role:'logo',fontWeight:900,letterSpacing:2}),
     rect('LIVE capsule',1584,22,288,56,channel.accent,{role:'accent'}),
-    txt('Live label','LIVE  •  WASHINGTON',1600,30,255,36,26,'#ffffff',{textAlign:'center',fontWeight:900}),
+    txt('Live label','LIVE  •  WASHINGTON',1600,30,255,36,21,'#ffffff',{textAlign:'center',fontWeight:900}),
     rect('Lower third dark',0,720,1920,260,channel.dark,{role:'dark'}),
     rect('Lower third red keyline',0,716,1920,8,channel.accent,{role:'accent'}),
     rect('Breaking marker',0,760,450,157,channel.accent,{role:'accent'}),
