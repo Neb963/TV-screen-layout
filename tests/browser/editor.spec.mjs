@@ -199,7 +199,7 @@ test('measured preview/output color parity away from selection guides',async({pa
  }
 });
 
-test('custom font remains embedded and export pixels stable after project round-trip',async({page})=>{
+test('custom font remains embedded and export pixels stable after project round-trip',async({page,browser})=>{
  let buffer;
  for(const path of ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf','/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf']){
    try{buffer=await fs.readFile(path);break;}catch{}
@@ -218,6 +218,15 @@ test('custom font remains embedded and export pixels stable after project round-
  await expect(page.locator('#projectTitle')).toHaveValue(/Atlantic/);
  const after=await exportDownload(page,'1920x1080');
  expect(createHash('sha256').update(before).digest('hex')).toBe(createHash('sha256').update(after).digest('hex'));
+ const freshContext=await browser.newContext({acceptDownloads:true});
+ try{
+   const fresh=await freshContext.newPage();
+   await fresh.goto('http://127.0.0.1:4173/');
+   await fresh.locator('#projectFile').setInputFiles({name:'portable.tvnews.json',mimeType:'application/json',buffer:data});
+   await expect(fresh.locator('#projectTitle')).toHaveValue(/Atlantic/);
+   const isolated=await exportDownload(fresh,'1920x1080');
+   expect(createHash('sha256').update(before).digest('hex')).toBe(createHash('sha256').update(isolated).digest('hex'));
+ }finally{await freshContext.close();}
 });
 
 
