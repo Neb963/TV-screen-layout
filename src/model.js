@@ -32,7 +32,13 @@ export function createDocument(options = {}) {
     assets: {}, fonts: {}, elements: [], ...options
   };
 }
-export const bounds = e => ({ left: e.x, top: e.y, right: e.x + e.w, bottom: e.y + e.h, cx: e.x + e.w / 2, cy: e.y + e.h / 2 });
+export function bounds(e) {
+  // Actual axis-aligned bounds of a centered rotated rectangle, in document pixels.
+  const cx=e.x+e.w/2,cy=e.y+e.h/2,r=(e.rotation||0)*Math.PI/180;
+  const c=Math.abs(Math.cos(r)),sin=Math.abs(Math.sin(r));
+  const w=e.w*c+e.h*sin,h=e.w*sin+e.h*c;
+  return {left:cx-w/2,top:cy-h/2,right:cx+w/2,bottom:cy+h/2,cx,cy,w,h};
+}
 export function localPoint(e, x, y) {
   const cx = e.x + e.w / 2, cy = e.y + e.h / 2, r = -(e.rotation || 0) * Math.PI / 180;
   const dx = x - cx, dy = y - cy;
@@ -75,24 +81,36 @@ export function ungroup(scene, ids) {
   scene.elements.forEach(e => { if (groups.has(e.groupId) && !e.locked) e.groupId = null; });
 }
 export function alignElements(scene, ids, mode) {
-  const items = scene.elements.filter(e => ids.includes(e.id) && !e.locked);
-  if (!items.length) return;
-  const left = Math.min(...items.map(e => e.x)), right = Math.max(...items.map(e => e.x + e.w));
-  const top = Math.min(...items.map(e => e.y)), bottom = Math.max(...items.map(e => e.y + e.h));
-  for (const e of items) {
-    if (mode === 'left') e.x = left;
-    if (mode === 'right') e.x = right - e.w;
-    if (mode === 'hcenter') e.x = (left + right - e.w) / 2;
-    if (mode === 'top') e.y = top;
-    if (mode === 'bottom') e.y = bottom - e.h;
-    if (mode === 'vcenter') e.y = (top + bottom - e.h) / 2;
+  const items=scene.elements.filter(e=>ids.includes(e.id)&&!e.locked&&!e.hidden);
+  if(!items.length)return;
+  // One object aligns to the artboard; multiple objects align their visible bounds.
+  const boxes=items.map(e=>({e,b:bounds(e)}));
+  const single=items.length===1;
+  const left=single?0:Math.min(...boxes.map(x=>x.b.left));
+  const right=single?scene.width:Math.max(...boxes.map(x=>x.b.right));
+  const top=single?0:Math.min(...boxes.map(x=>x.b.top));
+  const bottom=single?scene.height:Math.max(...boxes.map(x=>x.b.bottom));
+  if(mode==='distribute-x'||mode==='distribute-y'){
+    if(items.length<3)return;
+    const horizontal=mode==='distribute-x';
+    const edge=horizontal?'left':'top',extent=horizontal?'right':'bottom',len=horizontal?'w':'h';
+    const ordered=boxes.sort((a,b)=>a.b[edge]-b.b[edge]);
+    const start=ordered[0].b[edge],end=Math.max(...ordered.map(x=>x.b[extent]));
+    const gap=(end-start-ordered.reduce((total,x)=>total+x.b[len],0))/(items.length-1);
+    let cursor=start;
+    for(const {e,b} of ordered){
+      if(horizontal)e.x+=cursor-b.left;else e.y+=cursor-b.top;
+      cursor+=b[len]+gap;
+    }
+    return;
   }
-  if (items.length > 2 && (mode === 'distribute-x' || mode === 'distribute-y')) {
-    const horizontal = mode === 'distribute-x', start = horizontal ? 'x' : 'y', length = horizontal ? 'w' : 'h';
-    const ordered = [...items].sort((a,b) => a[start] - b[start]);
-    const overall = ordered.at(-1)[start] + ordered.at(-1)[length] - ordered[0][start];
-    const gap = (overall - ordered.reduce((v,e) => v + e[length],0)) / (ordered.length - 1);
-    let cursor = ordered[0][start]; ordered.forEach(e => { e[start] = cursor; cursor += e[length] + gap; });
+  for(const {e,b} of boxes){
+    if(mode==='left')e.x+=left-b.left;
+    if(mode==='right')e.x+=right-b.right;
+    if(mode==='hcenter')e.x+=(left+right)/2-b.cx;
+    if(mode==='top')e.y+=top-b.top;
+    if(mode==='bottom')e.y+=bottom-b.bottom;
+    if(mode==='vcenter')e.y+=(top+bottom)/2-b.cy;
   }
 }
 export function validateDocument(doc) {
