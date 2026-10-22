@@ -1,6 +1,6 @@
 import { createDocument, makeElement, deepCopy, uuid, clamp, bounds, localPoint, hitTest, selectionIds, translate, duplicate, group, ungroup, alignElements, validateDocument, parseProject, serializeProject, createHistory } from './model.js';
 import { BUILT_INS, instantiatePreset, instantiateCustomPreset } from './presets.js';
-import { renderAt, exportPng, handlePoints } from './renderer.js';
+import { renderAt, exportPng, handlePoints, selectionFrame } from './renderer.js';
 import { importImage, importFont, loadResources } from './assets.js';
 
 const $=id=>document.getElementById(id);
@@ -274,6 +274,7 @@ function startPointer(ev){
  let handle=null,id=null;
  if(!panMode){
   if(selected.length===1){const obj=onlySelected();if(obj)handle=handleHit(scene,obj,start.x,start.y);}
+  else if(selected.length>1){const frame=selectionFrame(scene.elements.filter(e=>selected.includes(e.id) && !e.hidden && !e.locked));if(frame)handle=handleHit(scene,frame,start.x,start.y);}
   if(handle===null)id=hitTest(scene,start.x,start.y);
   if(handle===null){
    if(!id){if(!ev.shiftKey)clearSelection();return;}
@@ -292,9 +293,40 @@ function updatePointer(ev){
  const dxClient=ev.clientX-pointer.startClient.x,dyClient=ev.clientY-pointer.startClient.y;
  if(Math.hypot(dxClient,dyClient)>2)pointer.moved=true;
  if(pointer.mode==='pan'){viewportState.panX=pointer.oldPan.x+dxClient;viewportState.panY=pointer.oldPan.y+dyClient;requestDraw();return;}
- const doc=deepCopy(pointer.before),now=screenPoint(ev),dx=now.x-pointer.start.x,dy=now.y-pointer.start.y;
+ const doc={...pointer.before,elements:pointer.before.elements.map(e=>({...e,crop:e.crop?{...e.crop}:e.crop}))},now=screenPoint(ev),dx=now.x-pointer.start.x,dy=now.y-pointer.start.y;
  if(pointer.mode==='drag'){
   const d=snapOffset(doc,pointer.ids,dx,dy,ev.altKey);translate(doc,pointer.ids,d.dx,d.dy);
+ }else if(pointer.ids.length>1){
+  const beforeMembers=pointer.before.elements.filter(e=>pointer.ids.includes(e.id) && !e.locked);
+  const frame=selectionFrame(beforeMembers);if(!frame)return;
+  const cx=frame.x+frame.w/2,cy=frame.y+frame.h/2;
+  if(pointer.mode==='rotate'){
+    const a=Math.atan2(pointer.start.y-cy,pointer.start.x-cx),b=Math.atan2(now.y-cy,now.x-cx);
+    let diff=(b-a)*180/Math.PI;if(ev.shiftKey)diff=Math.round(diff/15)*15;
+    const r=diff*Math.PI/180;
+    for(const e of doc.elements.filter(e=>pointer.ids.includes(e.id) && !e.locked)){
+      const ex=e.x+e.w/2-cx,ey=e.y+e.h/2-cy;
+      e.x=cx+ex*Math.cos(r)-ey*Math.sin(r)-e.w/2;
+      e.y=cy+ex*Math.sin(r)+ey*Math.cos(r)-e.h/2;
+      e.rotation+=diff;
+    }
+  }else{
+    const pts=handlePoints(frame),idx=pointer.handle,opp=pts[(idx+4)%8];
+    const ax=cx+opp[0],ay=cy+opp[1],px=now.x-cx,py=now.y-cy;
+    let w=frame.w,h=frame.h;
+    if(pts[idx][0]!==0)w=Math.max(10,pts[idx][0]<0?opp[0]-px:px-opp[0]);
+    if(pts[idx][1]!==0)h=Math.max(10,pts[idx][1]<0?opp[1]-py:py-opp[1]);
+    if(ev.shiftKey&&pts[idx][0]!==0&&pts[idx][1]!==0){
+      const ratio=frame.w/frame.h;if(w/h>ratio)w=h*ratio;else h=w/ratio;
+    }
+    const sx=w/frame.w,sy=h/frame.h,scaleFont=Math.sqrt(sx*sy);
+    for(const e of doc.elements.filter(e=>pointer.ids.includes(e.id) && !e.locked)){
+      e.x=ax+(e.x-ax)*sx;e.y=ay+(e.y-ay)*sy;
+      e.w=Math.max(1,e.w*sx);e.h=Math.max(1,e.h*sy);
+      if(e.type==='text')e.fontSize=Math.max(1,e.fontSize*scaleFont);
+      e.borderWidth*=scaleFont;e.outlineWidth*=scaleFont;
+    }
+  }
  }else{
   const e=doc.elements.find(el=>el.id===pointer.ids[0]);if(!e||e.locked)return;
   if(pointer.mode==='rotate'){
