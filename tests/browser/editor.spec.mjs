@@ -106,3 +106,76 @@ test('narrow viewport keeps drawing visible and export reachable',async({page})=
  await expect(page.locator('[data-action="export"]')).toBeVisible();
  await page.screenshot({path:'test-results/editor-mobile.png'});
 });
+
+
+test('safe native SVG imports and remains embedded after project download',async({page})=>{
+ await page.goto('/');
+ const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" fill="#27bf93"/><circle cx="24" cy="24" r="12" fill="#ffffff"/></svg>';
+ await page.locator('#imageFile').setInputFiles({name:'logo.svg',mimeType:'image/svg+xml',buffer:Buffer.from(svg)});
+ await expect(page.locator('[data-field="fit"]')).toBeVisible();
+ const pending=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const json=JSON.parse(await fs.readFile(await (await pending).path(),'utf8'));
+ expect(Object.values(json.assets).some(a=>a.mime==='image/svg+xml' && a.data.startsWith('data:image/svg+xml;base64,'))).toBe(true);
+});
+
+test('direct crop tool zooms and pans source window without changing frame geometry',async({page})=>{
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Lead image'}).locator('.layer-select').click();
+ const validPng=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGM0PlP+n4GBgYGJAQoAJUQCeYUFkNUAAAAASUVORK5CYII=','base64');
+ await page.locator('#imageFile').setInputFiles({name:'crop.png',mimeType:'image/png',buffer:validPng});
+ await page.locator('[data-inspector-action="zoom-crop-in"]').click();
+ await expect(page.locator('[data-field="crop.w"]')).toHaveValue('80');
+ await page.locator('[data-inspector-action="crop-mode"]').click();
+ const before=Number(await page.locator('[data-field="crop.x"]').inputValue());
+ const box=await page.locator('#sceneCanvas').boundingBox();
+ const x=box.x+box.width*.50,y=box.y+box.height*.4;
+ await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x-46,y,{steps:5});await page.mouse.up();
+ const after=Number(await page.locator('[data-field="crop.x"]').inputValue());
+ expect(after).toBeGreaterThan(before);
+ const save=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const doc=JSON.parse(await fs.readFile(await (await save).path(),'utf8'));
+ const img=doc.elements.find(e=>e.name==='Lead image / studio feed');
+ expect(img.w).toBe(1920);expect(img.h).toBe(720);
+ expect(img.crop.w).toBeCloseTo(.8);expect(img.crop.x).toBeGreaterThan(.1);
+});
+
+test('group handles resize selected shapes transactionally',async({page})=>{
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
+ await page.locator('.layer-row').filter({hasText:'Ticker text'}).locator('.layer-select').click({modifiers:['Shift']});
+ await expect(page.locator('#selectionCount')).toHaveText('2 selected');
+ await page.locator('[data-action="group"]').click();
+ const canvas=page.locator('#sceneCanvas'),box=await canvas.boundingBox();
+ const startX=box.x+box.width*(1891/1920),startY=box.y+box.height*(1072/1080);
+ await page.mouse.move(startX,startY);await page.mouse.down();
+ await page.mouse.move(startX-70,startY-22,{steps:8});await page.mouse.up();
+ const save=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const doc=JSON.parse(await fs.readFile(await (await save).path(),'utf8'));
+ const a=doc.elements.find(e=>e.name==='Ticker text'),b=doc.elements.find(e=>e.name==='Clock');
+ expect(a.groupId).toBe(b.groupId);
+ expect(a.w).toBeLessThan(1350);expect(b.w).toBeLessThan(166);
+ await page.locator('[data-action="undo"]').click();
+ const save2=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const undone=JSON.parse(await fs.readFile(await (await save2).path(),'utf8'));
+ expect(undone.elements.find(e=>e.name==='Ticker text').w).toBe(1350);
+});
+
+test('typography, solid-to-gradient and styling survive editable project serialization',async({page})=>{
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Headline'}).first().locator('.layer-select').click();
+ if(await page.locator('[data-field="text"]').count()){
+  await page.locator('[data-field="text"]').fill('LONG, PRECISE\nHEADLINE');
+  await page.locator('[data-field="text"]').press('Tab');
+  await page.locator('[data-field="letterSpacing"]').fill('3.5');
+  await page.locator('[data-field="letterSpacing"]').press('Tab');
+ }
+ await page.locator('.layer-row').filter({hasText:'Top brand bar'}).locator('.layer-select').click();
+ await page.locator('[data-field="fillType"]').selectOption('gradient');
+ await page.locator('[data-field="gradientAngle"]').fill('40');
+ await page.locator('[data-field="gradientAngle"]').press('Tab');
+ const save=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const doc=JSON.parse(await fs.readFile(await (await save).path(),'utf8'));
+ expect(doc.elements.find(e=>e.name==='Top brand bar').fill).toMatchObject({type:'linear',angle:40});
+ expect(doc.elements.find(e=>e.name==='Headline').letterSpacing).toBe(3.5);
+});
+
