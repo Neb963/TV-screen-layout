@@ -38,7 +38,7 @@ test('numeric geometry is undoable; selected art can drag, group, lock and chang
 test('embedded image replacement, crop and fully editable save/reimport',async({page})=>{
  await page.goto('/');await page.locator('[data-tab="layers"]').click();
  await page.locator('.layer-row').filter({hasText:'Lead image'}).locator('.layer-select').click();
- const imageBuffer=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5YQAAAAASUVORK5CYII=','base64');
+ const imageBuffer=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGM0PlP+n4GBgYGJAQoAJUQCeYUFkNUAAAAASUVORK5CYII=','base64');
  await page.locator('#imageFile').setInputFiles({name:'frame.png',mimeType:'image/png',buffer:imageBuffer});
  await expect(page.locator('[data-field="fit"]')).toBeVisible();
  await page.locator('[data-field="crop.w"]').fill('65');await page.locator('[data-field="crop.w"]').press('Tab');
