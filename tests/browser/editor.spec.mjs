@@ -186,7 +186,7 @@ test('typography, solid-to-gradient and styling survive editable project seriali
 
 test('measured preview/output color parity away from selection guides',async({page})=>{
  await page.goto('/');await page.locator('#guidesToggle').uncheck();
- const points=[[40,200],[250,250],[350,690],[720,340],[1350,360],[1550,410],[100,870],[1200,932],[1800,940],[200,1018]];
+ const points=[[40,200],[250,250],[350,690],[720,340],[1350,360],[1550,410],[100,870],[1200,932],[1800,940],[200,1062]];
  const preview=await page.locator('#sceneCanvas').evaluate((canvas,points)=>{
   const c=canvas.getContext('2d');
   return points.map(([x,y])=>Array.from(c.getImageData(Math.floor(x/1920*canvas.width),Math.floor(y/1080*canvas.height),1,1).data));
