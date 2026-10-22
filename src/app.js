@@ -49,7 +49,7 @@ function draw(){
   canvas.style.width=w+'px';canvas.style.height=h+'px';
   const ctx=canvas.getContext('2d');if(!ctx){announce('Canvas 2D context unavailable',true);return;}
   renderAt(ctx,scene,resources,pw,ph,{ids:selected,scale,guides:$('guidesToggle').checked});
-  $('zoomLabel').textContent=Math.round(100*viewportState.zoom)+'%';
+  $('zoomLabel').textContent=Math.round(100*scale)+'%';
   $('canvasSize').textContent=scene.width+' × '+scene.height;
   $('emptyState').hidden=scene.elements.length!==0;
 }
