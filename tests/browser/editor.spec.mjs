@@ -238,3 +238,17 @@ test('native preset labels and headlines fit their text frames without clipping'
  });
  expect(overflows).toEqual([]);
 });
+
+
+test('malicious SVG hidden inside imported project is rejected transactionally',async({page})=>{
+ await page.goto('/');const current=await page.locator('#projectTitle').inputValue();
+ const poisoned=await page.evaluate(async()=>{
+   const {createDocument,makeElement}=await import('/src/model.js');
+   return createDocument({title:'Injected content',elements:[makeElement('image',{assetId:'malicious'})]});
+ });
+ const svg='<svg xmlns="http://www.w3.org/2000/svg"><foreignObject width="10" height="10"><div xmlns="http://www.w3.org/1999/xhtml">active</div></foreignObject></svg>';
+ poisoned.assets.malicious={id:'malicious',name:'injected.svg',mime:'image/svg+xml',data:'data:image/svg+xml;base64,'+Buffer.from(svg).toString('base64')};
+ await page.locator('#projectFile').setInputFiles({name:'poisoned.tvnews.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(poisoned))});
+ await expect(page.locator('#toast')).toContainText('Import failed');
+ await expect(page.locator('#projectTitle')).toHaveValue(current);
+});
