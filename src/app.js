@@ -488,7 +488,9 @@ document.addEventListener('keyup',ev=>{if(ev.code==='Space'){spaceDown=false;vie
 window.addEventListener('blur',()=>{spaceDown=false;if(pointer)finishPointer({pointerId:pointer.id},true);});
 document.addEventListener('paste',async ev=>{
  if(ev.target instanceof Element && ev.target.closest('input,textarea,[contenteditable]'))return;
- const file=[...(ev.clipboardData?.files||[])].find(f=>f.type.startsWith('image/'));
+ const transfer=ev.clipboardData;
+ const file=[...(transfer?.files||[])].find(f=>f.type?.startsWith('image/'))
+   || [...(transfer?.items||[])].filter(item=>item.kind==='file'&&item.type?.startsWith('image/')).map(item=>item.getAsFile?.()).find(Boolean);
  if(file){ev.preventDefault();await addImage(file);}
 });
 function updateExportInfo(){
