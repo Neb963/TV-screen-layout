@@ -112,7 +112,7 @@ export function validateDocument(doc) {
     }
     if (e.w <= 0 || e.h <= 0 || e.opacity < 0 || e.opacity > 1) throw Error('Invalid element geometry/opacity');
     if (typeof e.text !== 'string' || e.text.length > 30000) throw Error('Invalid text');
-    if ((e.type === 'image' || e.assetId) && (!e.assetId || !doc.assets[e.assetId])) throw Error('Missing embedded image for ' + e.name);
+    if ((e.type === 'image' || e.assetId) && (!e.assetId || !Object.hasOwn(doc.assets,e.assetId))) throw Error('Missing embedded image for ' + e.name);
     if (e.crop && (!['x','y','w','h'].every(k => Number.isFinite(e.crop[k])) || e.crop.w <= 0 || e.crop.h <= 0 || e.crop.x < 0 || e.crop.y < 0 || e.crop.x + e.crop.w > 1.00001 || e.crop.y + e.crop.h > 1.00001)) throw Error('Invalid crop');
   }
   for (const asset of Object.values(doc.assets)) {
