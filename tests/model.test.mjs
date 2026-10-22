@@ -81,3 +81,17 @@ test('prototype-derived names are not accepted as embedded image asset IDs',()=>
  const d=createDocument({elements:[makeElement('image',{assetId:'constructor'})]});
  assert.throws(()=>validateDocument(d),/Missing embedded image/);
 });
+
+
+test('rotated align uses actual visible bounds and single selection aligns to artboard',()=>{
+ const e=makeElement('rect',{x:333,y:220,w:180,h:80,rotation:45});
+ const d=createDocument({elements:[e]});
+ alignElements(d,[e.id],'left');
+ assert.ok(Math.abs(bounds(e).left)<1e-8);
+ alignElements(d,[e.id],'vcenter');
+ assert.ok(Math.abs(bounds(e).cy-d.height/2)<1e-8);
+ const second=makeElement('rect',{x:680,y:70,w:100,h:220,rotation:20});
+ d.elements.push(second);
+ alignElements(d,[e.id,second.id],'right');
+ assert.ok(Math.abs(bounds(e).right-bounds(second).right)<1e-8);
+});
