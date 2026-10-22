@@ -289,3 +289,37 @@ test('keyboard nudge/undo/Delete and Escape drag cancellation protect document h
  const bytesAfter=await fs.readFile(await (await after).path());
  expect(bytesAfter.equals(bytesBefore)).toBe(true);
 });
+
+
+test('autosave restores a real edited scene after browser reload',async({page})=>{
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
+ await page.locator('[data-field="text"]').fill('10:12 UTC');await page.locator('[data-field="text"]').press('Tab');
+ await expect(page.locator('[data-field="text"]')).toHaveValue('10:12 UTC');
+ await expect.poll(async()=>page.evaluate(()=>localStorage.getItem('framecraft-autosave-v1')?.includes('10:12 UTC'))).toBe(true);
+ await page.reload();await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
+ await expect(page.locator('[data-field="text"]')).toHaveValue('10:12 UTC');
+});
+
+test('custom channel logo and identity survive preset replacement and project download',async({page})=>{
+ page.on('dialog',d=>d.accept());
+ await page.goto('/');await page.locator('[data-tab="channels"]').click();
+ await page.locator('#channelName').fill('NORTH SKY');
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGM0PlP+n4GBgYGJAQoAJUQCeYUFkNUAAAAASUVORK5CYII=','base64');
+ await page.locator('#logoFile').setInputFiles({name:'mark.png',mimeType:'image/png',buffer:png});
+ await page.locator('#channelSaveName').fill('Sky identity');
+ await page.locator('[data-action="save-channel"]').click();
+ await expect(page.locator('#savedChannelList')).toContainText('Sky identity');
+ await page.locator('[data-tab="presets"]').click();
+ await page.locator('#presetList .preset').nth(1).click();
+ await expect(page.locator('#projectTitle')).toHaveValue(/Metro/);
+ await page.locator('[data-tab="channels"]').click();
+ await page.locator('#savedChannelList .preset').first().click();
+ const pending=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const doc=JSON.parse(await fs.readFile(await (await pending).path(),'utf8'));
+ expect(doc.channel.name).toBe('NORTH SKY');
+ const logo=doc.elements.find(e=>e.role==='logo');
+ expect(logo.type).toBe('image');
+ expect(doc.assets[logo.assetId].mime).toBe('image/png');
+});
