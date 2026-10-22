@@ -1,0 +1,36 @@
+name: Verify editor
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  model-and-browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check source and model
+        run: npm test
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium firefox
+      - name: Run actual editor workflows
+        run: npm run test:e2e
+      - name: Upload browser failure evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-evidence
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
