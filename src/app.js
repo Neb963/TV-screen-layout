@@ -177,9 +177,11 @@ async function useChannel(item){
 }
 function readChannelForm(){return {...deepCopy(scene.channel),name:$('channelName').value.trim()||'UNTITLED',primary:$('channelPrimary').value,accent:$('channelAccent').value,dark:$('channelDark').value,light:$('channelLight').value,fontFamily:$('channelFont').value};}
 function confirmReplacement(){return !dirty || confirm('Replace your current design? Download an editable project first if you need to keep your changes.');}
-async function replaceScene(next){
+async function replaceScene(next, existingRequestEpoch=null){
  validateDocument(next);
- const requestEpoch=++sceneReplacementEpoch;
+ // File readers may already have reserved this request position. Reuse it;
+ // otherwise the double increment would hide validation errors from the owner.
+ const requestEpoch=existingRequestEpoch??++sceneReplacementEpoch;
  const loaded=await loadResources(next);
  // A later New/Open/Preset action must always win, regardless of decoding speed.
  if(requestEpoch!==sceneReplacementEpoch)return;
@@ -201,8 +203,8 @@ async function openProject(file){
    if(file.size>45_000_000)throw Error('Project exceeds 45MB limit');
    const next=parseProject(await file.text());
    if(requestEpoch!==sceneReplacementEpoch)return;
-   await replaceScene(next);
-   if(requestEpoch+1===sceneReplacementEpoch)announce('Project opened; all layers and resources retained');
+   await replaceScene(next,requestEpoch);
+   if(requestEpoch===sceneReplacementEpoch)announce('Project opened; all layers and resources retained');
  }catch(err){
    if(requestEpoch===sceneReplacementEpoch)announce('Import failed; previous project preserved: '+err.message,true);
  }
