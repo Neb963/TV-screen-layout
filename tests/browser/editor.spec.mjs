@@ -119,6 +119,7 @@ test('safe native SVG imports and remains embedded after project download',async
  const pending=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
  const json=JSON.parse(await fs.readFile(await (await pending).path(),'utf8'));
  expect(Object.values(json.assets).some(a=>a.mime==='image/svg+xml' && a.data.startsWith('data:image/svg+xml;base64,'))).toBe(true);
+ expect(pngDims(await exportDownload(page,'1920x1080'))).toEqual({width:1920,height:1080});
 });
 
 test('direct crop tool zooms and pans source window without changing frame geometry',async({page})=>{
@@ -528,4 +529,68 @@ test('internal scene paste respects native clipboard-image precedence and group 
  await expect(page.locator('#layerCount')).toHaveText('20');
  const after=await projectSnapshot(page);
  expect(after.elements.at(-1).type).toBe('image');
+});
+
+
+test('JPEG upload, project reimport, and image export work without format conversion loss',async({page})=>{
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Lead image'}).locator('.layer-select').click();
+ const jpeg=Buffer.from(await page.evaluate(()=>{
+   const c=document.createElement('canvas');c.width=8;c.height=8;
+   const context=c.getContext('2d');context.fillStyle='#f97316';context.fillRect(0,0,8,8);
+   return c.toDataURL('image/jpeg',.95).split(',')[1];
+ }),'base64');
+ await page.locator('#imageFile').setInputFiles({name:'capture.jpeg',mimeType:'image/jpeg',buffer:jpeg});
+ await expect(page.locator('[data-field="fit"]')).toBeVisible();
+ const doc=await projectSnapshot(page);
+ expect(Object.values(doc.assets)[0].mime).toBe('image/jpeg');
+ expect(doc.elements.find(e=>e.name==='Lead image / studio feed').type).toBe('image');
+ const png=await exportDownload(page,'1920x1080');
+ expect(pngDims(png)).toEqual({width:1920,height:1080});
+ await page.locator('[data-action="new"]').click();
+ await page.locator('#projectFile').setInputFiles({name:'jpeg.tvnews.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
+ await expect(page.locator('#projectTitle')).toHaveValue(/Atlantic/);
+});
+
+test('corrupt image decoding leaves editable scene unchanged',async({page})=>{
+ await page.goto('/');const initial=await projectSnapshot(page);
+ await page.locator('#imageFile').setInputFiles({name:'corrupt.jpg',mimeType:'image/jpeg',buffer:Buffer.from([0xff,0xd8,0xff,0,1,2,3,4])});
+ await expect(page.locator('#toast')).toContainText('Image import rejected');
+ const after=await projectSnapshot(page);
+ expect(after.elements).toEqual(initial.elements);
+ expect(after.assets).toEqual(initial.assets);
+});
+
+test('local-storage quota failure does not prevent editable project download',async({page})=>{
+ await page.addInitScript(()=>{
+   const original=Storage.prototype.setItem;
+   Storage.prototype.setItem=function(key,value){
+     if(key==='framecraft-autosave-v1')throw new DOMException('Quota reached','QuotaExceededError');
+     return original.call(this,key,value);
+   };
+ });
+ await page.goto('/');await page.locator('[data-action="add-rect"]').click();
+ await expect(page.locator('#toast')).toContainText('Autosave unavailable',{timeout:5000});
+ const doc=await projectSnapshot(page);
+ expect(doc.elements.some(e=>e.name==='Rectangle')).toBe(true);
+});
+
+test('a slow opening project cannot overwrite a newer file-selection request',async({page})=>{
+ await page.addInitScript(()=>{
+   const original=File.prototype.text;
+   File.prototype.text=function(...args){
+     if(this.name==='slow.tvnews.json')return new Promise((resolve,reject)=>setTimeout(()=>original.apply(this,args).then(resolve,reject),600));
+     return original.apply(this,args);
+   };
+ });
+ await page.goto('/');
+ const [slow,fast]=await page.evaluate(async()=>{
+  const {createDocument}=await import('/src/model.js');
+  return [createDocument({title:'Slow import'}),createDocument({title:'Fast import'})];
+ });
+ await page.locator('#projectFile').setInputFiles({name:'slow.tvnews.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(slow))});
+ await page.locator('#projectFile').setInputFiles({name:'fast.tvnews.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fast))});
+ await expect(page.locator('#projectTitle')).toHaveValue('Fast import');
+ await page.waitForTimeout(720);
+ await expect(page.locator('#projectTitle')).toHaveValue('Fast import');
 });
