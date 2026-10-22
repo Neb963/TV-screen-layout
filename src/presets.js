@@ -105,12 +105,95 @@ function studio() {
  txt('LIVE','LIVE',1635,1018,220,45,31,'#20113e',{textAlign:'center',fontWeight:900})
  ];return createDocument({title:'Civic • Magazine Split',channel,elements});
 }
+
+function election() {
+ const channel=ch('ELECTION CENTER','#1c3877','#e33240','#0c1c3b');
+ const elements=[
+ rect('Election backdrop',0,0,1920,1080,{type:'linear',colors:['#081325','#203a68'],angle:30}),
+ rect('Masthead',0,0,1920,128,channel.dark,{role:'dark'}),
+ rect('Masthead accent',0,125,1920,5,channel.accent,{role:'accent'}),
+ txt('Network','ELECTION / CENTER',42,22,1050,83,69,'#ffffff',{role:'logo',fontWeight:900}),
+ rect('Coverage marker',1542,27,327,66,channel.accent,{role:'accent'}),
+ txt('Live coverage','LIVE COVERAGE',1558,38,296,47,31,'#ffffff',{fontWeight:900,textAlign:'center'}),
+ placeholder('State map graphics',45,166,1050,641),
+ rect('Results side panel',1128,166,748,641,'#102f57'),
+ rect('Results title bar',1128,166,748,110,channel.primary,{role:'primary'}),
+ txt('Results header','LATEST RESULTS',1165,185,660,72,51,'#ffffff',{fontWeight:900}),
+ rect('Candidate blue',1162,312,140,128,'#2555a3'),
+ rect('Candidate red',1162,478,140,128,channel.accent,{role:'accent'}),
+ txt('Candidate One','CANDIDATE A',1320,326,515,88,55,'#ffffff',{fontWeight:800}),
+ txt('Candidate Two','CANDIDATE B',1320,495,515,88,55,'#ffffff',{fontWeight:800}),
+ txt('Result One','51.8%',1455,400,333,53,45,'#b5d5ff',{fontWeight:900,textAlign:'right'}),
+ txt('Result Two','46.2%',1455,570,333,53,45,'#ffb8bf',{fontWeight:900,textAlign:'right'}),
+ rect('Headline strip',0,834,1920,160,channel.dark,{role:'dark'}),
+ rect('Election tag',0,834,445,160,channel.accent,{role:'accent'}),
+ txt('Tag','ELECTION NIGHT',36,873,380,79,58,'#ffffff',{fontWeight:900}),
+ txt('Headline','COUNTING CONTINUES IN KEY STATES',486,851,1360,125,71,'#ffffff',{fontWeight:900}),
+ rect('Ticker strip',0,994,1920,86,channel.primary,{role:'primary'}),
+ txt('Ticker','LIVE UPDATES     •     POLLS     •     RACES     •     ANALYSIS',42,1010,1526,54,35,'#ffffff',{fontWeight:800}),
+ txt('Clock','22:18 ET',1691,1010,191,54,31,'#ffffff',{textAlign:'right',fontWeight:900})
+ ];
+ return createDocument({title:'Election Center • Results',channel,elements});
+}
+function weather() {
+ const channel=ch('SKYCAST','#1368b8','#ffae38','#082b54');
+ const elements=[
+ rect('Blue storm background',0,0,1920,1080,{type:'linear',colors:['#081b39','#12417b'],angle:0}),
+ rect('Top frame',0,0,1920,120,channel.dark,{role:'dark'}),
+ txt('Skycast logo','SKYCAST',38,16,704,94,77,'#ffffff',{role:'logo',fontWeight:900}),
+ rect('Alert capsule',1495,22,381,76,channel.accent,{role:'accent'}),
+ txt('Alert','WEATHER ALERT',1510,36,354,54,38,'#082b54',{fontWeight:900,textAlign:'center'}),
+ placeholder('Weather radar map',40,156,1203,650,{fill:'#155d73'}),
+ rect('Forecast board',1268,156,612,650,'#153b64'),
+ rect('Forecast title',1268,156,612,110,channel.primary,{role:'primary'}),
+ txt('Forecast label','NEXT 24 HOURS',1295,180,551,68,48,'#ffffff',{fontWeight:900}),
+ txt('Forecast line 1','TODAY        24°C',1300,313,548,78,51,'#ffffff',{fontWeight:800}),
+ txt('Forecast line 2','TONIGHT     17°C',1300,444,548,78,51,'#ffffff',{fontWeight:800}),
+ txt('Forecast line 3','TOMORROW    21°C',1300,575,548,78,51,'#ffffff',{fontWeight:800}),
+ rect('Weather headline',0,832,1920,166,'#ffffff'),
+ rect('Left attention bar',0,832,23,166,channel.accent,{role:'accent'}),
+ txt('Weather headline text','SEVERE STORMS EXPECTED ACROSS THE REGION',56,854,1790,130,71,'#102949',{fontWeight:900}),
+ rect('Weather ticker',0,998,1920,82,channel.primary,{role:'primary'}),
+ txt('Ticker','LOCAL CONDITIONS     •     SATELLITE     •     WIND     •     ADVISORIES',40,1011,1560,57,35,'#ffffff',{fontWeight:800}),
+ txt('Clock','07:45',1717,1011,156,57,36,'#ffffff',{fontWeight:900,textAlign:'right'})
+ ];
+ return createDocument({title:'Skycast • Weather Alert',channel,elements});
+}
+function sports() {
+ const channel=ch('SPORTLINE','#142f59','#f3cb39','#071327');
+ const elements=[
+ rect('Stadium ground',0,0,1920,1080,'#0d1b2f'),
+ placeholder('Live stadium field',0,0,1920,770,{fill:'#105a4b'}),
+ rect('Topline',0,0,1920,113,channel.dark,{role:'dark'}),
+ txt('Sportsline brand','SPORTLINE',41,10,790,87,73,'#ffffff',{role:'logo',fontWeight:900}),
+ rect('Sports live capsule',1644,26,227,61,channel.accent,{role:'accent'}),
+ txt('Live','LIVE',1661,32,193,49,39,'#071327',{fontWeight:900,textAlign:'center'}),
+ rect('Scoreboard',70,567,1780,190,'#0a2445',{opacity:.96}),
+ rect('Team left accent',70,567,24,190,channel.accent,{role:'accent'}),
+ txt('Team home','NORTH',123,601,498,115,79,'#ffffff',{fontWeight:900}),
+ txt('Home score','3',700,597,139,115,90,'#ffffff',{fontWeight:900,textAlign:'center'}),
+ txt('Score divider','—',898,612,91,88,60,'#a5bcdb',{textAlign:'center'}),
+ txt('Away score','2',1084,597,139,115,90,'#ffffff',{fontWeight:900,textAlign:'center'}),
+ txt('Team away','SOUTH',1287,601,465,115,79,'#ffffff',{fontWeight:900}),
+ rect('News strip',0,785,1920,209,channel.dark,{role:'dark'}),
+ rect('News top keyline',0,782,1920,7,channel.accent,{role:'accent'}),
+ txt('Sports headline','LATE GOAL SEALS DRAMATIC VICTORY',55,812,1809,152,88,'#ffffff',{fontWeight:900}),
+ rect('Sports crawl',0,994,1920,86,channel.primary,{role:'primary'}),
+ txt('Ticker','FULL TIME     •     MATCH REPORT     •     HIGHLIGHTS     •     UPCOMING',40,1006,1500,60,37,'#ffffff',{fontWeight:800}),
+ txt('Clock','90 + 4',1665,1008,219,56,34,'#f3cb39',{textAlign:'right',fontWeight:900})
+ ];
+ return createDocument({title:'Sportline • Final Score',channel,elements});
+}
+
 export const BUILT_INS = [
  {id:'atlantic',label:'Atlantic Breaking',description:'Fox-inspired high-contrast breaking-news composition',make:atlantic},
  {id:'metro',label:'Metro Two-Way',description:'Split-screen live interview',make:metro},
  {id:'world',label:'World Report',description:'Panoramic international bulletin',make:world},
  {id:'finance',label:'Market Watch',description:'Financial newsroom and index table',make:finance},
- {id:'studio',label:'Civic Magazine',description:'Contemporary editorial split view',make:studio}
+ {id:'studio',label:'Civic Magazine',description:'Contemporary editorial split view',make:studio},
+ {id:'election',label:'Election Center',description:'Results graphics with live map and candidates',make:election},
+ {id:'weather',label:'Skycast Weather',description:'Severe-weather radar and forecast bulletin',make:weather},
+ {id:'sports',label:'Sportline Final',description:'Sporting-event scoreboard and final result',make:sports}
 ];
 export function instantiatePreset(id) {
  const p=BUILT_INS.find(p => p.id === id); if(!p) throw Error('Unknown preset');
