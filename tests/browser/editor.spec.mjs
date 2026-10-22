@@ -11,7 +11,7 @@ async function exportDownload(page,resolution='1920x1080'){
  const file=await ready;return fs.readFile(await file.path());
 }
 test('loads complete composition and actual painted canvas',async({page})=>{
- await page.goto('/');await expect(page.locator('#presetList .preset')).toHaveCount(5);
+ await page.goto('/');await expect(page.locator('#presetList .preset')).toHaveCount(8);
  await expect(page.locator('#projectTitle')).toHaveValue(/Atlantic/);
  await page.locator('[data-tab="layers"]').click();
  expect(await page.locator('.layer-row').count()).toBeGreaterThan(14);
