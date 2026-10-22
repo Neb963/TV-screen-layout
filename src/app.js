@@ -196,13 +196,16 @@ function saveProject(){try{const json=serializeProject(scene);download(new Blob(
 async function openProject(file){if(!file)return;if(!confirmReplacement())return;try{if(file.size>45_000_000)throw Error('Project exceeds 45MB limit');const next=parseProject(await file.text());await replaceScene(next);announce('Project opened; all layers and resources retained');}catch(err){announce('Import failed; previous project preserved: '+err.message,true);}}
 async function addImage(file,logo=false){
  if(!file)return;
+ const initialEpoch=sceneReplacementEpoch, originalTarget=selected.length===1?selected[0]:null;
  try{
- const asset=await importImage(file);const next=deepCopy(scene);next.assets[asset.id]=asset;
+ const asset=await importImage(file);
+ if(sceneReplacementEpoch!==initialEpoch)return;
+ const next=deepCopy(scene);next.assets[asset.id]=asset;
  let ids=[];
  if(logo){
   const draft=readChannelForm();draft.logoAssetId=asset.id;applyChannel(next,draft);
  }else{
-  const target=selected.length===1?next.elements.find(e=>e.id===selected[0]):null;
+  const target=originalTarget?next.elements.find(e=>e.id===originalTarget):null;
   if(target&&!target.locked&&(target.type==='image'||target.type==='placeholder')){
    target.type='image';target.assetId=asset.id;target.crop={x:0,y:0,w:1,h:1};target.fit='cover';ids=[target.id];
   }else{
@@ -210,13 +213,18 @@ async function addImage(file,logo=false){
    next.elements.push(item);ids=[item.id];
   }
  }
- const loaded=await loadResources(next);resources=loaded;commit(next);if(ids.length)setSelection(ids);announce(logo?'Channel logo embedded in project':'Image imported and embedded');
+ const loaded=await loadResources(next);
+ if(sceneReplacementEpoch!==initialEpoch)return;
+ resources=loaded;commit(next);if(ids.length)setSelection(ids);announce(logo?'Channel logo embedded in project':'Image imported and embedded');
  }catch(err){announce('Image import rejected: '+err.message,true);}
 }
 async function addFont(file){
  if(!file)return;
- try{const font=await importFont(file),next=deepCopy(scene);next.fonts[font.id]=font;
-  const target=selected.length===1?next.elements.find(e=>e.id===selected[0]):null;
+ const initialEpoch=sceneReplacementEpoch, originalTarget=selected.length===1?selected[0]:null;
+ try{const font=await importFont(file);
+  if(sceneReplacementEpoch!==initialEpoch)return;
+  const next=deepCopy(scene);next.fonts[font.id]=font;
+  const target=originalTarget?next.elements.find(e=>e.id===originalTarget):null;
   if(target&&target.type==='text'&&!target.locked)target.fontFamily=font.family;
   commit(next);announce('Embedded font '+font.family);
  }catch(err){announce('Font import failed: '+err.message,true);}
@@ -539,7 +547,14 @@ function init(){
  renderPresets();applyPresetTab('presets');updateUI();
  try{
   const saved=localStorage.getItem(STORAGE);
-  if(saved){const doc=parseProject(saved);loadResources(doc).then(res=>{scene=doc;history.reset(doc);resources=res;dirty=true;centerView();updateUI();announce('Recovered your last autosaved project');}).catch(err=>announce('Autosave could not be restored: '+err.message,true));}
+  if(saved){
+    const doc=parseProject(saved), recoveryEpoch=sceneReplacementEpoch, baseline=scene;
+    loadResources(doc).then(res=>{
+      if(sceneReplacementEpoch!==recoveryEpoch||scene!==baseline)return;
+      scene=doc;history.reset(doc);resources=res;dirty=true;centerView();updateUI();
+      announce('Recovered your last autosaved project');
+    }).catch(err=>announce('Autosave could not be restored: '+err.message,true));
+  }
  }catch(err){announce('Autosave is invalid; starting with built-in preset: '+err.message,true);}
  computeFit();requestDraw();
 }
