@@ -127,8 +127,8 @@ function election() {
  txt('Result Two','46.2%',1455,570,333,53,45,'#ffb8bf',{fontWeight:900,textAlign:'right'}),
  rect('Headline strip',0,834,1920,160,channel.dark,{role:'dark'}),
  rect('Election tag',0,834,445,160,channel.accent,{role:'accent'}),
- txt('Tag','ELECTION NIGHT',36,873,380,79,58,'#ffffff',{fontWeight:900}),
- txt('Headline','COUNTING CONTINUES IN KEY STATES',486,851,1360,125,71,'#ffffff',{fontWeight:900}),
+ txt('Tag','ELECTION NIGHT',36,873,380,79,43,'#ffffff',{fontWeight:900}),
+ txt('Headline','COUNTING CONTINUES IN KEY STATES',486,845,1360,143,62,'#ffffff',{fontWeight:900}),
  rect('Ticker strip',0,994,1920,86,channel.primary,{role:'primary'}),
  txt('Ticker','LIVE UPDATES     •     POLLS     •     RACES     •     ANALYSIS',42,1010,1526,54,35,'#ffffff',{fontWeight:800}),
  txt('Clock','22:18 ET',1691,1010,191,54,31,'#ffffff',{textAlign:'right',fontWeight:900})
@@ -152,7 +152,7 @@ function weather() {
  txt('Forecast line 3','TOMORROW    21°C',1300,575,548,78,51,'#ffffff',{fontWeight:800}),
  rect('Weather headline',0,832,1920,166,'#ffffff'),
  rect('Left attention bar',0,832,23,166,channel.accent,{role:'accent'}),
- txt('Weather headline text','SEVERE STORMS EXPECTED ACROSS THE REGION',56,854,1790,130,71,'#102949',{fontWeight:900}),
+ txt('Weather headline text','SEVERE STORMS EXPECTED ACROSS THE REGION',56,854,1790,130,58,'#102949',{fontWeight:900}),
  rect('Weather ticker',0,998,1920,82,channel.primary,{role:'primary'}),
  txt('Ticker','LOCAL CONDITIONS     •     SATELLITE     •     WIND     •     ADVISORIES',40,1011,1560,57,35,'#ffffff',{fontWeight:800}),
  txt('Clock','07:45',1717,1011,156,57,36,'#ffffff',{fontWeight:900,textAlign:'right'})
