@@ -1,0 +1,19 @@
+{
+  "name": "framecraft-broadcast-layout",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Static television news composition editor",
+  "scripts": {
+    "dev": "python3 -m http.server 4173",
+    "test:unit": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "check": "node --check src/app.js && node --check src/model.js && node --check src/presets.js && node --check src/renderer.js && node --check src/assets.js",
+    "test": "npm run check && npm run test:unit",
+    "build": "npm run check"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "pngjs": "7.0.0"
+  }
+}
