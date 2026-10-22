@@ -594,3 +594,20 @@ test('a slow opening project cannot overwrite a newer file-selection request',as
  await page.waitForTimeout(720);
  await expect(page.locator('#projectTitle')).toHaveValue('Fast import');
 });
+
+
+test('render and retain full-HD PNG evidence for every built-in composition',async({page,browserName})=>{
+ await page.goto('/');
+ const presets=await page.evaluate(async()=>{
+   const {BUILT_INS}=await import('/src/presets.js');
+   return BUILT_INS.map(p=>({id:p.id,title:p.make().title}));
+ });
+ expect(presets).toHaveLength(8);
+ for(let i=0;i<presets.length;i++){
+   await page.locator('#presetList .preset').nth(i).click();
+   await expect(page.locator('#projectTitle')).toHaveValue(presets[i].title);
+   const bytes=await exportDownload(page,'1920x1080');
+   expect(pngDims(bytes)).toEqual({width:1920,height:1080});
+   await fs.writeFile('test-results/preset-'+browserName+'-'+presets[i].id+'.png',bytes);
+ }
+});
