@@ -18,6 +18,7 @@ const announce=(message,error=false)=>{const t=$('toast');t.textContent=message;
 let toastTimer,autosaveTimer,raf=0;
 let scene=instantiatePreset('atlantic'),history=createHistory(scene),resources={images:new Map()},selected=[],clipboard=[];
 let viewportState={zoom:1,panX:0,panY:0,fit:1},activeTool='select',spaceDown=false,pointer=null,dirty=false;
+let sceneReplacementEpoch=0;
 let customPresets=readCatalog(PRESETS),savedChannels=readCatalog(CHANNELS);
 
 function readCatalog(key){try{const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value:[];}catch{return [];}}
@@ -177,7 +178,10 @@ function readChannelForm(){return {...deepCopy(scene.channel),name:$('channelNam
 function confirmReplacement(){return !dirty || confirm('Replace your current design? Download an editable project first if you need to keep your changes.');}
 async function replaceScene(next){
  validateDocument(next);
+ const requestEpoch=++sceneReplacementEpoch;
  const loaded=await loadResources(next);
+ // A later New/Open/Preset action must always win, regardless of decoding speed.
+ if(requestEpoch!==sceneReplacementEpoch)return;
  resources=loaded;scene=deepCopy(next);history.reset(scene);selected=[];dirty=false;
  centerView();updateUI();scheduleSave();
 }
