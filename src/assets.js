@@ -72,7 +72,19 @@ export async function loadFont(font) {
 export async function loadResources(doc) {
   if(Object.keys(doc.assets).length>LIMITS.assets||Object.keys(doc.fonts).length>LIMITS.fonts)throw Error('Too many embedded resources');
   const images=new Map();
-  await Promise.all(Object.entries(doc.assets).map(async ([id,a])=>images.set(id,await loadImage(a))));
+  await Promise.all(Object.entries(doc.assets).map(async ([id,a])=>{
+    const mime=a.data.slice(5,a.data.indexOf(';base64,'));
+    if(a.mime!==mime)throw Error('Embedded image MIME does not match its data');
+    if(mime==='image/svg+xml'){
+      let source;
+      try {
+        const bytes=Uint8Array.from(atob(a.data.split(',')[1]),ch=>ch.charCodeAt(0));
+        source=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+      }catch{throw Error('Invalid encoded SVG asset');}
+      sanitizeSvg(source); // Required even when SVG arrived in a project, not a file upload.
+    }
+    images.set(id,await loadImage(a));
+  }));
   await Promise.all(Object.values(doc.fonts).map(loadFont));
   await document.fonts.ready;
   return {images};
