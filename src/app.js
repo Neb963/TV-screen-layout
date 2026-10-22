@@ -19,6 +19,7 @@ let toastTimer,autosaveTimer,raf=0;
 let scene=instantiatePreset('atlantic'),history=createHistory(scene),resources={images:new Map()},selected=[],clipboard=[];
 let viewportState={zoom:1,panX:0,panY:0,fit:1},activeTool='select',spaceDown=false,pointer=null,dirty=false;
 let sceneReplacementEpoch=0;
+let cropMode=false;
 let customPresets=readCatalog(PRESETS),savedChannels=readCatalog(CHANNELS);
 
 function readCatalog(key){try{const value=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(value)?value:[];}catch{return [];}}
@@ -35,7 +36,7 @@ function afterHistory(){scene=history.value;selected=selected.filter(id=>scene.e
 function undo(){if(history.undo())afterHistory();}
 function redo(){if(history.redo())afterHistory();}
 function clearSelection(){selected=[];updateUI();}
-function setSelection(ids){selected=[...new Set(ids)].filter(id=>scene.elements.some(e=>e.id===id));updateUI();}
+function setSelection(ids){cropMode=false;selected=[...new Set(ids)].filter(id=>scene.elements.some(e=>e.id===id));updateUI();}
 function onlySelected(){return scene.elements.find(e=>e.id===selected[0]);}
 function localToWorld(e,x,y){const r=e.rotation*Math.PI/180,cx=e.x+e.w/2,cy=e.y+e.h/2;return {x:cx+x*Math.cos(r)-y*Math.sin(r),y:cy+x*Math.sin(r)+y*Math.cos(r)};}
 function scaled(){return viewportState.fit*viewportState.zoom;}
@@ -116,7 +117,7 @@ function renderInspector(){
  if(e.type==='image'||e.type==='placeholder'){
   out+='<div class="inspector-section"><h3>Image content</h3><button data-inspector-action="replace-image" class="wide" '+(disabled?'disabled':'')+'>'+(e.type==='placeholder'?'Fill image frame':'Replace image')+'</button>';
   if(e.type==='image'){
-   out+=selectfld('Image fit','fit',e.fit,[['cover','Cover (crop to frame)'],['contain','Contain (letterbox)'],['stretch','Stretch to frame']],disabled)+
+   out+='<div class="inspector-button-row"><button data-inspector-action="crop-mode" '+(cropMode?'class="active" ':'')+'title="Drag within image to reposition its crop window">'+(cropMode?'Exit crop mode':'Drag crop')+'</button><button data-inspector-action="zoom-crop-in" title="Zoom in within original image">Zoom +</button><button data-inspector-action="zoom-crop-out" title="Zoom out within original image">Zoom −</button></div>'+selectfld('Image fit','fit',e.fit,[['cover','Cover (crop to frame)'],['contain','Contain (letterbox)'],['stretch','Stretch to frame']],disabled)+
     '<div class="select-hint">Crop is a normalized source-image window. Cover crops further to fit the frame.</div><div class="field-grid">'+
     fld('Crop left (%)','crop.x',round(e.crop.x*100),{min:0,max:99,disabled})+
     fld('Crop top (%)','crop.y',round(e.crop.y*100),{min:0,max:99,disabled})+
@@ -273,7 +274,8 @@ function startPointer(ev){
  const start=panMode?null:screenPoint(ev);
  let handle=null,id=null;
  if(!panMode){
-  if(selected.length===1){const obj=onlySelected();if(obj)handle=handleHit(scene,obj,start.x,start.y);}
+  if(cropMode&&selected.length===1&&onlySelected()?.type==='image'&&hitTest(scene,start.x,start.y)===selected[0])handle='crop';
+  else if(selected.length===1){const obj=onlySelected();if(obj)handle=handleHit(scene,obj,start.x,start.y);}
   else if(selected.length>1){const frame=selectionFrame(scene.elements.filter(e=>selected.includes(e.id) && !e.hidden && !e.locked));if(frame)handle=handleHit(scene,frame,start.x,start.y);}
   if(handle===null)id=hitTest(scene,start.x,start.y);
   if(handle===null){
@@ -283,7 +285,7 @@ function startPointer(ev){
    if(!selected.includes(id))setSelection(ids);
   }
  }
- pointer={id:ev.pointerId,mode:panMode?'pan':handle===null?'drag':handle==='rotate'?'rotate':'resize',start,startClient:{x:ev.clientX,y:ev.clientY},oldPan:{x:viewportState.panX,y:viewportState.panY},
+ pointer={id:ev.pointerId,mode:panMode?'pan':handle===null?'drag':handle==='rotate'?'rotate':handle==='crop'?'crop':'resize',start,startClient:{x:ev.clientX,y:ev.clientY},oldPan:{x:viewportState.panX,y:viewportState.panY},
   before:deepCopy(scene),ids:[...selected],handle,moved:false,previousUI:scene};
  viewport.setPointerCapture(ev.pointerId);viewport.classList.toggle('panning',panMode);
  ev.preventDefault();
@@ -296,6 +298,13 @@ function updatePointer(ev){
  const doc={...pointer.before,elements:pointer.before.elements.map(e=>({...e,crop:e.crop?{...e.crop}:e.crop}))},now=screenPoint(ev),dx=now.x-pointer.start.x,dy=now.y-pointer.start.y;
  if(pointer.mode==='drag'){
   const d=snapOffset(doc,pointer.ids,dx,dy,ev.altKey);translate(doc,pointer.ids,d.dx,d.dy);
+ }else if(pointer.mode==='crop'){
+  const e=doc.elements.find(e=>e.id===pointer.ids[0]),start=pointer.before.elements.find(e=>e.id===pointer.ids[0]);
+  if(e?.type==='image'&&!e.locked){
+    const p0=localPoint(start,pointer.start.x,pointer.start.y),p1=localPoint(start,now.x,now.y),c=e.crop;
+    c.x=clamp(c.x-(p1.x-p0.x)/e.w*c.w,0,1-c.w);
+    c.y=clamp(c.y-(p1.y-p0.y)/e.h*c.h,0,1-c.h);
+  }
  }else if(pointer.ids.length>1){
   const beforeMembers=pointer.before.elements.filter(e=>pointer.ids.includes(e.id) && !e.locked);
   const frame=selectionFrame(beforeMembers);if(!frame)return;
@@ -389,6 +398,14 @@ inspector.addEventListener('click',ev=>{
   case 'duplicate':duplicateSelected();break;
   case 'replace-image':$('imageFile').click();break;
   case 'font':$('fontFile').click();break;
+  case 'crop-mode':cropMode=!cropMode;renderInspector();announce(cropMode?'Crop mode: drag image to pan its crop window. Use Zoom + first to reveal movable margins.':'Crop mode disabled');break;
+  case 'zoom-crop-in':case 'zoom-crop-out':{
+   const factor=button.dataset.inspectorAction==='zoom-crop-in'?.8:1.25;
+   change(doc=>{const e=doc.elements.find(e=>e.id===selected[0]);if(!e||e.type!=='image'||e.locked)return;
+     const c=e.crop,ww=clamp(c.w*factor,.05,1),hh=clamp(c.h*factor,.05,1);
+     c.x=clamp(c.x+c.w/2-ww/2,0,1-ww);c.y=clamp(c.y+c.h/2-hh/2,0,1-hh);c.w=ww;c.h=hh;
+   });break;
+  }
  }
 });
 async function handleAction(action){
@@ -461,7 +478,7 @@ document.addEventListener('keydown',ev=>{
    if(k==='v'&&clipboard.length){const copies=deepCopy(clipboard);change(doc=>{const ids=new Map();for(const e of copies){const old=e.id;e.id=uuid();ids.set(old,e.id);e.x+=30;e.y+=30;doc.elements.push(e);}});setSelection(copies.map(e=>e.id));return;}
  }
  if(k==='delete'||k==='backspace'){ev.preventDefault();removeSelected();return;}
- if(k==='escape'){if(pointer)finishPointer({pointerId:pointer.id},true);else clearSelection();return;}
+ if(k==='escape'){if(pointer)finishPointer({pointerId:pointer.id},true);else if(cropMode){cropMode=false;renderInspector();}else clearSelection();return;}
  if(['arrowleft','arrowright','arrowup','arrowdown'].includes(k)&&selected.length){
    ev.preventDefault();const amount=ev.shiftKey?10:1;change(doc=>translate(doc,selected,k==='arrowleft'?-amount:k==='arrowright'?amount:0,k==='arrowup'?-amount:k==='arrowdown'?amount:0));return;
  }
