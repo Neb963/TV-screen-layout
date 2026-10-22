@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { PNG } from 'pngjs';
 const pngDims=b=>({width:b.readUInt32BE(16),height:b.readUInt32BE(20)});
 async function exportDownload(page,resolution='1920x1080'){
  await page.locator('[data-action="export"]').click();
@@ -64,6 +65,8 @@ test('PNG export has exact HD and 4K headers and is deterministic',async({page})
  expect(createHash('sha256').update(hd).digest('hex')).toBe(createHash('sha256').update(hd2).digest('hex'));
  const fourK=await exportDownload(page,'3840x2160');
  expect(pngDims(fourK)).toEqual({width:3840,height:2160});
+ await fs.writeFile('test-results/export-hd.png',hd);
+ await fs.writeFile('test-results/export-4k.png',fourK);
 });
 test('unsafe SVG and malformed project are rejected with previous artwork intact',async({page})=>{
  await page.goto('/');
@@ -179,3 +182,40 @@ test('typography, solid-to-gradient and styling survive editable project seriali
  expect(doc.elements.find(e=>e.name==='Headline').letterSpacing).toBe(3.5);
 });
 
+
+
+test('measured preview/output color parity away from selection guides',async({page})=>{
+ await page.goto('/');await page.locator('#guidesToggle').uncheck();
+ const points=[[40,200],[250,250],[350,690],[720,340],[1350,360],[1550,410],[100,870],[1200,932],[1800,940],[200,1018]];
+ const preview=await page.locator('#sceneCanvas').evaluate((canvas,points)=>{
+  const c=canvas.getContext('2d');
+  return points.map(([x,y])=>Array.from(c.getImageData(Math.floor(x/1920*canvas.width),Math.floor(y/1080*canvas.height),1,1).data));
+ },points);
+ const png=PNG.sync.read(await exportDownload(page,'1920x1080'));
+ for(let i=0;i<points.length;i++){
+  const [x,y]=points[i],o=(y*png.width+x)*4,out=[...png.data.subarray(o,o+4)];
+  const distance=preview[i].slice(0,3).reduce((n,v,j)=>n+Math.abs(v-out[j]),0);
+  expect(distance,'color parity at '+JSON.stringify(points[i])+' preview='+preview[i]+' png='+out).toBeLessThan(40);
+ }
+});
+
+test('custom font remains embedded and export pixels stable after project round-trip',async({page})=>{
+ let buffer;
+ for(const path of ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf','/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf']){
+   try{buffer=await fs.readFile(path);break;}catch{}
+ }
+ if(!buffer)throw Error('CI browser runner lacks a usable TTF fixture');
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Headline'}).first().locator('.layer-select').click();
+ await page.locator('#fontFile').setInputFiles({name:'Verification.ttf',mimeType:'font/ttf',buffer});
+ await expect(page.locator('[data-field="fontFamily"]')).toHaveValue('Uploaded Verification');
+ const before=await exportDownload(page,'1920x1080');
+ const saved=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const data=await fs.readFile(await (await saved).path());
+ const doc=JSON.parse(data.toString('utf8'));expect(Object.values(doc.fonts)).toHaveLength(1);
+ await page.locator('[data-action="new"]').click();
+ await page.locator('#projectFile').setInputFiles({name:'with-font.tvnews.json',mimeType:'application/json',buffer:data});
+ await expect(page.locator('#projectTitle')).toHaveValue(/Atlantic/);
+ const after=await exportDownload(page,'1920x1080');
+ expect(createHash('sha256').update(before).digest('hex')).toBe(createHash('sha256').update(after).digest('hex'));
+});
