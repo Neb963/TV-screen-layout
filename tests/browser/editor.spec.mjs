@@ -366,3 +366,45 @@ test('custom preset is reusable as independent editable native layers',async({pa
  await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
  await expect(page.locator('[data-field="text"]')).toHaveValue('TEST CLOCK');
 });
+
+
+test('shadow offsets and blur preserve document proportions in HD and 4K',async({page})=>{
+ await page.goto('/');
+ const doc=await page.evaluate(async()=>{
+   const {createDocument,makeElement}=await import('/src/model.js');
+   return createDocument({title:'Shadow fidelity',background:'#ffffff',elements:[
+     makeElement('rect',{x:400,y:300,w:200,h:140,fill:'#244d7a',
+        shadowColor:'#000000',shadowBlur:20,shadowX:35,shadowY:24})
+   ]});
+ });
+ await page.locator('#projectFile').setInputFiles({name:'shadow.tvnews.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
+ await expect(page.locator('#projectTitle')).toHaveValue('Shadow fidelity');
+ const hd=PNG.sync.read(await exportDownload(page,'1920x1080'));
+ const k4=PNG.sync.read(await exportDownload(page,'3840x2160'));
+ const rgb=(img,x,y)=>[...img.data.subarray((y*img.width+x)*4,(y*img.width+x)*4+3)];
+ // Shadow-only areas to the right/below the rect: compare equivalent document coordinates.
+ const points=[[623,380],[627,450],[590,467],[475,472],[645,405]];
+ for(const [x,y] of points){
+  const a=rgb(hd,x,y),b=rgb(k4,x*2,y*2);
+  expect(a.reduce((acc,n,i)=>acc+Math.abs(n-b[i]),0),
+    'HD/4K shadow mismatch at '+x+','+y+': '+a+' vs '+b).toBeLessThan(70);
+ }
+});
+
+test('in-flight image imports cannot reappear inside a newly created project',async({page})=>{
+ await page.addInitScript(()=>{
+   const original=Blob.prototype.arrayBuffer;
+   Blob.prototype.arrayBuffer=function(...args){
+     return new Promise((resolve,reject)=>setTimeout(()=>original.apply(this,args).then(resolve,reject),650));
+   };
+ });
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Lead image'}).locator('.layer-select').click();
+ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGM0PlP+n4GBgYGJAQoAJUQCeYUFkNUAAAAASUVORK5CYII=','base64');
+ page.on('dialog',d=>d.accept());
+ await page.locator('#imageFile').setInputFiles({name:'slow.png',mimeType:'image/png',buffer:png});
+ await page.locator('[data-action="new"]').click();
+ await expect(page.locator('#projectTitle')).toHaveValue('Blank broadcast');
+ await page.waitForTimeout(850);
+ await expect(page.locator('#layerCount')).toHaveText('0');
+});
