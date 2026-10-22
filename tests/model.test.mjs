@@ -75,3 +75,9 @@ test('text wrap splits at explicit newlines and narrow widths',()=>{
  assert.deepEqual(wrapText(ctx,'ONE\nTWO',100),['ONE','TWO']);
  assert.deepEqual(wrapText(ctx,'ABCDE',20),['AB','CD','E']);
 });
+
+
+test('prototype-derived names are not accepted as embedded image asset IDs',()=>{
+ const d=createDocument({elements:[makeElement('image',{assetId:'constructor'})]});
+ assert.throws(()=>validateDocument(d),/Missing embedded image/);
+});
