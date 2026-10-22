@@ -1,6 +1,6 @@
 # DESIGN.md — Television News Screen Layout Designer
 
-Status: **approved implementation direction; feature verification remains tracked in TODO.md**. Source authority: CLIENT_SPEC.md then AGENTS.md. This design does not declare untested capabilities complete.
+Status: **implemented architecture and UX design; empirical acceptance and remaining gaps are tracked in TODO.md**. Source authority: CLIENT_SPEC.md then AGENTS.md. This design does not declare untested capabilities complete.
 
 ## Product and workflows
 A desktop-first, local-first, browser graphics instrument for broadcast designers, journalists and art directors producing **static** HD/4K television-news mockups. Start from a native editable broadcast composition, edit objects/branding, import images/fonts, save a portable editable project, and export a full-resolution PNG. No video, animation, feeds or broadcast output.
@@ -33,7 +33,7 @@ A desktop-first, local-first, browser graphics instrument for broadcast designer
 | R16 | Robustness/accessibility | validation/error handling and QA | Keyboard flows, corrupt import protection, responsive panels, visible focus |
 
 ## Information architecture / UX
-Top command bar: project title, new/open/save, undo/redo, preset chooser, export action. Left sidebar: presets/channels and layers hierarchy; right inspector: object transform, type-specific styling and image/text properties. Center: large checkerboard stage, zoom/pan, guides/snap overlays, marquee/handle feedback. Status: physical scene dimensions, selected objects and zoom. Compact dense visual hierarchy, not a card dashboard. Dialogs for project export, channel management, and asset/font import as needed.
+Top command bar: project title, new/open/save, undo/redo, preset chooser, export action. Left sidebar: presets/channels and layers hierarchy; right inspector: object transform, type-specific styling and image/text properties. Center: large checkerboard stage, zoom/pan, guides/snap overlays, and multi-selection transform-handle feedback. Status: physical scene dimensions, selected objects and zoom. Compact dense visual hierarchy, not a card dashboard. Dialogs for project export, channel management, and asset/font import as needed.
 A new document opens with a vivid, editable broadcast preset rather than a blank placeholder. The catalog now contains eight distinct news, interview, international, finance, magazine, election, weather, and sports compositions; they are scene objects, not flattened images.
 
 ## Interaction specification
@@ -77,3 +77,5 @@ Tests: pure model invariants, version/oversized input failures, scene transform 
 - UTF-8 JSON v1 project download is portable and transactional on import. Imported embedded SVGs are revalidated against a strict allowlist. Image resources and custom FontFace objects are loaded before output; conflicting family-name files replace the former registration.
 - Non-proportional custom PNG output is an **explicitly confirmed stretch**, not a hidden automatic crop. HD/4K PNGs are regenerated at exact requested dimensions, with screenshots/measurements and repeated-hash tests tracked in TODO.md. Per-browser antialiasing and resource-limit behavior remain subject to empirical review.
 - Browser automated tests use synthetic clipboard fixtures for determinism, and therefore do not replace manual operating-system clipboard checks. Unsaved-history persistence is not promised: history is an in-session undo stack, while localStorage autosaves only current document state.
+
+Latest acceptance baseline: GitHub Actions [39728266570](https://github.com/Neb963/TV-screen-layout/actions/runs/39728266570), source HEAD `c46d275a`, passed 13 model tests and 68 actual Chromium/Firefox editor tests. Eight exported HD preset PNGs from both browsers were captured; all eight were visually inspected at overview scale and the previously clipped election/weather headlines were rechecked at full resolution after correction. This is not a substitute for unperformed assistive-technology, physical touch, OS clipboard or memory-limit acceptance; see TODO.md.
