@@ -257,8 +257,9 @@ function align(mode){
 function snapOffset(doc,ids,dx,dy,alt=false){
  if(!$('snapToggle').checked||alt)return {dx,dy};
  const items=doc.elements.filter(e=>ids.includes(e.id));if(!items.length)return {dx,dy};
- const minx=Math.min(...items.map(e=>e.x)),maxx=Math.max(...items.map(e=>e.x+e.w));
- const miny=Math.min(...items.map(e=>e.y)),maxy=Math.max(...items.map(e=>e.y+e.h));
+ const boxes=items.map(bounds);
+ const minx=Math.min(...boxes.map(b=>b.left)),maxx=Math.max(...boxes.map(b=>b.right));
+ const miny=Math.min(...boxes.map(b=>b.top)),maxy=Math.max(...boxes.map(b=>b.bottom));
  let outx=Math.round((minx+dx)/10)*10-minx,outy=Math.round((miny+dy)/10)*10-miny;
  const cx=(minx+maxx)/2,cy=(miny+maxy)/2;
  for(const [where,delta,set] of [[0,dx,'x'],[doc.width/2,dx,'x'],[doc.width,dx,'x'],[0,dy,'y'],[doc.height/2,dy,'y'],[doc.height,dy,'y']]){
