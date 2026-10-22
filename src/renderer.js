@@ -18,10 +18,12 @@ export function wrapText(ctx, text, width, letterSpacing=0) {
     for (const word of paragraph.split(/(\s+)/)) {
       if (!word) continue;
       const next = line + word;
-      if (!line || measure(next) <= width) { line=next; continue; }
+      if (measure(next) <= width) { line=next; continue; }
       if (line.trim()) { result.push(line.trimEnd()); line=''; }
-      if (measure(word) <= width) { line=word.trimStart(); continue; }
-      for (const char of word) {
+      const candidate = word.trimStart();
+      if (!candidate) continue;
+      if (measure(candidate) <= width) { line=candidate; continue; }
+      for (const char of candidate) {
         if (line && measure(line+char)>width) {result.push(line);line='';}
         line+=char;
       }
