@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10151f"><title>Framecraft — Broadcast Layout Studio</title>
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+<div id="app">
+  <header class="commandbar">
+    <div class="brand"><div class="brandmark" aria-hidden="true"><span></span><span></span><span></span></div><div><strong>FRAMECRAFT</strong><small>Broadcast layout studio</small></div></div>
+    <div class="command-group project-actions">
+      <button data-action="new" title="New project">New</button>
+      <button data-action="open" title="Import an editable project">Open</button>
+      <button data-action="save" title="Download editable project (Ctrl+S)">Save project</button>
+      <span class="separator"></span>
+      <label class="title-input"><span class="sr-only">Project title</span><input id="projectTitle" aria-label="Project title" maxlength="200" value="Untitled broadcast"></label>
+    </div>
+    <div class="command-group history-actions">
+      <button class="icon-button" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+      <button class="icon-button" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
+      <span class="separator"></span>
+      <button data-action="duplicate" title="Duplicate selection (Ctrl+D)">Duplicate</button>
+      <button data-action="delete" title="Delete selection">Delete</button>
+    </div>
+    <button class="primary export-trigger" data-action="export">Export PNG <span aria-hidden="true">↗</span></button>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar sidebar-left" id="leftSidebar" aria-label="Workspace panels">
+      <div class="tabstrip" role="tablist" aria-label="Sidebar mode">
+        <button class="active" data-tab="presets" role="tab" aria-selected="true">Presets</button>
+        <button data-tab="layers" role="tab" aria-selected="false">Layers</button>
+        <button data-tab="channels" role="tab" aria-selected="false">Channels</button>
+      </div>
+      <div class="sidebar-body">
+        <section id="presetsPanel" class="side-panel">
+          <div class="section-heading"><h2>Broadcast templates</h2><span>Editable</span></div>
+          <p class="hint">Select a layout to start a new composition. Existing edits are kept until you confirm replacement.</p>
+          <div id="presetList" class="preset-list"></div>
+          <div class="panel-divider"></div>
+          <div class="section-heading"><h2>Custom presets</h2></div>
+          <div class="stack-inline"><input id="presetName" aria-label="New preset name" placeholder="Preset name" maxlength="80"><button data-action="save-preset" title="Save current design as reusable preset">Save</button></div>
+          <div id="customPresetList" class="preset-list"></div>
+        </section>
+        <section id="layersPanel" class="side-panel" hidden>
+          <div class="section-heading"><h2>Scene layers</h2><span id="layerCount">0</span></div>
+          <div class="layer-tools"><button data-action="raise" title="Bring layer forward">Move ↑</button><button data-action="lower" title="Send layer backward">Move ↓</button><button data-action="group" title="Group selected objects">Group</button><button data-action="ungroup" title="Ungroup selected objects">Ungroup</button></div>
+          <div id="layerList" class="layer-list" aria-label="Layers ordered from front to back"></div>
+        </section>
+        <section id="channelsPanel" class="side-panel" hidden>
+          <div class="section-heading"><h2>Channel identity</h2></div>
+          <p class="hint">Theme-role artwork updates when you apply this brand. Custom element colors remain untouched.</p>
+          <div class="field"><label for="channelName">Channel name</label><input id="channelName" maxlength="80"></div>
+          <div class="color-grid">
+            <label>Primary <input id="channelPrimary" aria-label="Primary channel color" type="color"></label>
+            <label>Accent <input id="channelAccent" aria-label="Accent channel color" type="color"></label>
+            <label>Dark <input id="channelDark" aria-label="Dark channel color" type="color"></label>
+            <label>Light <input id="channelLight" aria-label="Light channel color" type="color"></label>
+          </div>
+          <div class="field"><label for="channelFont">Default typeface</label><select id="channelFont"></select></div>
+          <button class="wide" data-action="apply-channel">Apply identity to this design</button>
+          <button class="wide" data-action="channel-logo">Upload channel logo</button>
+          <div class="panel-divider"></div>
+          <div class="section-heading"><h2>Saved identities</h2></div>
+          <div class="stack-inline"><input id="channelSaveName" placeholder="Identity name" aria-label="Saved channel identity name"><button data-action="save-channel">Save</button></div>
+          <div id="savedChannelList" class="preset-list"></div>
+        </section>
+      </div>
+      <footer class="sidebar-foot">LOCAL FIRST <span>•</span> YOUR FILES STAY IN THIS BROWSER</footer>
+    </aside>
+
+    <main class="center-pane" aria-label="Canvas editor">
+      <div class="canvas-toolbar">
+        <div class="command-group tools">
+          <button class="tool active" data-action="tool-select" aria-pressed="true">↖ <span>Select</span></button>
+          <button class="tool" data-action="tool-pan" aria-pressed="false">✋ <span>Pan</span></button>
+          <span class="separator"></span>
+          <button data-action="add-text" title="Insert text">T <span>Text</span></button>
+          <button data-action="add-rect" title="Insert rectangle">▭ <span>Shape</span></button>
+          <button data-action="add-ellipse" title="Insert ellipse">◯</button>
+          <button data-action="add-placeholder" title="Insert image placeholder">▣ <span>Frame</span></button>
+          <button data-action="upload-image" title="Insert PNG, JPEG or SVG">＋ Image</button>
+        </div>
+        <div class="command-group canvas-options">
+          <label class="compact-toggle"><input type="checkbox" id="snapToggle" checked> Snap</label>
+          <label class="compact-toggle"><input type="checkbox" id="guidesToggle" checked> Guides</label>
+        </div>
+      </div>
+      <div class="viewport" id="viewport" tabindex="0" aria-label="Editable broadcast composition; use Shift to select multiple layers, Space to pan">
+        <div id="stage"><canvas id="sceneCanvas" aria-label="Document artwork"></canvas></div>
+        <div class="empty-state" id="emptyState" hidden>No scene elements. Add shapes, text, or choose a preset.</div>
+      </div>
+      <div class="canvas-footer">
+        <div id="statusText" role="status" aria-live="polite">Ready</div>
+        <div class="command-group zoom-actions">
+          <button data-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+          <span id="zoomLabel">100%</span>
+          <button data-action="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+          <button data-action="zoom-fit">Fit</button>
+          <span class="separator"></span><span id="canvasSize">1920 × 1080</span>
+        </div>
+      </div>
+    </main>
+
+    <aside class="sidebar sidebar-right" id="rightSidebar" aria-label="Properties inspector">
+      <div class="inspector-header"><h2>Inspector</h2><span id="selectionCount">No selection</span></div>
+      <div class="sidebar-body" id="inspector">
+        <div class="inspector-placeholder">
+          <div class="inspector-symbol">◎</div><h3>Select an element</h3>
+          <p>Choose a layer or click the composition to edit geometry, media, and style.</p>
+        </div>
+      </div>
+      <div class="inspector-bottom">
+        <div class="section-heading"><h2>Align selected</h2></div>
+        <div class="alignment"><button data-align="left" title="Align left">⇤</button><button data-align="hcenter" title="Center horizontally">↔</button><button data-align="right" title="Align right">⇥</button><button data-align="top" title="Align top">⇡</button><button data-align="vcenter" title="Center vertically">↕</button><button data-align="bottom" title="Align bottom">⇣</button><button data-align="distribute-x" title="Distribute horizontally">⋯</button><button data-align="distribute-y" title="Distribute vertically">⋮</button></div>
+      </div>
+    </aside>
+  </div>
+</div>
+<input type="file" id="projectFile" accept=".json,.tvnews.json,application/json" hidden>
+<input type="file" id="imageFile" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" hidden>
+<input type="file" id="fontFile" accept=".woff,.woff2,.ttf,.otf" hidden>
+<input type="file" id="logoFile" accept=".png,.jpg,.jpeg,.svg" hidden>
+<dialog id="exportDialog" aria-labelledby="exportTitle">
+  <form method="dialog" id="exportForm" class="dialog-form">
+    <div class="dialog-heading"><h2 id="exportTitle">Export static artwork</h2><button value="cancel" class="icon-button" aria-label="Close export">×</button></div>
+    <p class="hint">Redraws native vectors, text and images at the selected pixel dimensions. Editor handles and guides are not exported.</p>
+    <div class="field"><label for="exportResolution">Output size</label><select id="exportResolution"><option value="1920x1080">Full HD · 1920 × 1080</option><option value="3840x2160">4K UHD · 3840 × 2160</option><option value="1280x720">HD · 1280 × 720</option><option value="custom">Custom dimensions</option></select></div>
+    <div class="field-grid"><div class="field"><label for="exportWidth">Width (px)</label><input id="exportWidth" type="number" min="1" max="10000" value="1920"></div><div class="field"><label for="exportHeight">Height (px)</label><input id="exportHeight" type="number" min="1" max="10000" value="1080"></div></div>
+    <label class="compact-toggle"><input type="checkbox" id="keepAspect" checked> Lock document aspect ratio</label>
+    <p class="hint" id="exportAspectInfo">16:9 source · pixel-perfect proportional scaling</p>
+    <div class="dialog-actions"><button value="cancel">Cancel</button><button value="export" class="primary">Download PNG</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="alert" hidden></div>
+<script type="module" src="./src/app.js"></script>
+</body>
+</html>
