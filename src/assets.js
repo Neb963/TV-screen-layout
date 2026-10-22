@@ -11,7 +11,7 @@ export function sanitizeSvg(source) {
   const walk=node=>{
     if(!SVG_TAGS.has(node.localName))throw Error('Unsupported or active SVG element: '+node.localName);
     for(const attr of [...node.attributes]){
-      if(attr.namespaceURI && attr.namespaceURI!=='http://www.w3.org/2000/svg')throw Error('Namespaced SVG attributes are prohibited');
+      if(attr.namespaceURI && attr.namespaceURI!=='http://www.w3.org/2000/svg' && !(attr.name==='xmlns' && attr.namespaceURI==='http://www.w3.org/2000/xmlns/'))throw Error('Namespaced SVG attributes are prohibited');
       if(!ATTRS.has(attr.name))throw Error('Unsupported SVG attribute: '+attr.name);
       if(/url\s*\(/i.test(attr.value)&&!/^url\(\s*#[A-Za-z0-9_-]+\s*\)$/.test(attr.value))throw Error('External SVG reference prohibited');
       if(/javascript:|data:|@import|expression\s*\(/i.test(attr.value))throw Error('Unsafe SVG attribute');
