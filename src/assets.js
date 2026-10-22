@@ -71,7 +71,13 @@ export async function loadFont(font) {
   const key=font.family+'\0'+font.data.length+'\0'+font.data.slice(-128);
   if(faceCache.has(key))return faceCache.get(key);
   const face=new FontFace(font.family,'url("'+font.data+'")');
-  await face.load();document.fonts.add(face);faceCache.set(key,face);
+  await face.load();
+  // Projects may embed different binaries under the same filename/family.
+  // Never leave two distinct faces competing for a document's family name.
+  for(const [cachedKey,old] of faceCache){
+    if(old.family===font.family){document.fonts.delete(old);faceCache.delete(cachedKey);}
+  }
+  document.fonts.add(face);faceCache.set(key,face);
   // Avoid retaining every font ever used when projects are switched frequently.
   while(faceCache.size>64){
     const oldest=faceCache.keys().next().value,stale=faceCache.get(oldest);
