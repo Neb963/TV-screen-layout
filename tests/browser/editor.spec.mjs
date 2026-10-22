@@ -259,8 +259,12 @@ test('clipboard image paste adds a portable editable layer',async({page})=>{
  const png='iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGM0PlP+n4GBgYGJAQoAJUQCeYUFkNUAAAAASUVORK5CYII=';
  await page.evaluate(base64=>{
   const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
-  const transfer=new DataTransfer();transfer.items.add(new File([bytes],'clipboard.png',{type:'image/png'}));
-  document.dispatchEvent(new ClipboardEvent('paste',{clipboardData:transfer,bubbles:true,cancelable:true}));
+  const image=new File([bytes],'clipboard.png',{type:'image/png'});
+  // Firefox does not consistently expose files on constructor-created ClipboardEvent.
+  // Inject an event with a read-only clipboardData object, preserving the handler contract.
+  const event=new Event('paste',{bubbles:true,cancelable:true});
+  Object.defineProperty(event,'clipboardData',{value:{files:[image],items:[{kind:'file',type:'image/png',getAsFile:()=>image}]}});
+  document.dispatchEvent(event);
  },png);
  await expect(page.locator('#layerCount')).toHaveText('18');
  const pending=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
