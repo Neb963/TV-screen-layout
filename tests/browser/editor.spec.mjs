@@ -408,3 +408,87 @@ test('in-flight image imports cannot reappear inside a newly created project',as
  await page.waitForTimeout(850);
  await expect(page.locator('#layerCount')).toHaveText('0');
 });
+
+
+async function projectSnapshot(page){
+ const dl=page.waitForEvent('download');
+ await page.locator('[data-action="save"]').click();
+ return JSON.parse(await fs.readFile(await (await dl).path(),'utf8'));
+}
+test('dragging resize and rotation handles updates native geometry and undo restores it',async({page})=>{
+ await page.goto('/');
+ await page.locator('[data-action="add-rect"]').click();
+ await expect(page.locator('[data-field="w"]')).toHaveValue('450');
+ const canvas=page.locator('#sceneCanvas'),box=await canvas.boundingBox();
+ const world=(x,y)=>({x:box.x+x*box.width/1920,y:box.y+y*box.height/1080});
+ const corner=world(576+450,324+250);
+ await page.mouse.move(corner.x,corner.y);
+ await page.mouse.down();await page.mouse.move(corner.x+50,corner.y+30,{steps:8});await page.mouse.up();
+ const resized=await projectSnapshot(page);
+ const rect=resized.elements.at(-1);
+ expect(rect.w).toBeGreaterThan(450);expect(rect.h).toBeGreaterThan(250);
+ await page.locator('[data-action="undo"]').click();
+ await expect(page.locator('[data-field="w"]')).toHaveValue('450');
+ const center=world(576+225,324);
+ await page.mouse.move(center.x,center.y-32);await page.mouse.down();
+ await page.mouse.move(center.x+52,center.y-11,{steps:6});await page.mouse.up();
+ const rotated=await projectSnapshot(page);
+ expect(Math.abs(rotated.elements.at(-1).rotation)).toBeGreaterThan(5);
+ await page.locator('[data-action="undo"]').click();
+ await expect(page.locator('[data-field="rotation"]')).toHaveValue('0');
+});
+
+test('layer lock, hide, and stacking changes are reversible',async({page})=>{
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ const row=page.locator('.layer-row').filter({hasText:'Clock'});
+ await row.locator('.layer-select').click();
+ const start=await projectSnapshot(page),initial=start.elements.findIndex(e=>e.name==='Clock');
+ await page.locator('[data-action="lower"]').click();
+ let doc=await projectSnapshot(page);
+ expect(doc.elements.findIndex(e=>e.name==='Clock')).toBe(initial-1);
+ await row.locator('.layer-state[title="Lock layer"]').click();
+ await expect(page.locator('[data-field="x"]')).toBeDisabled();
+ await page.keyboard.press('Delete');
+ doc=await projectSnapshot(page);
+ expect(doc.elements.find(e=>e.name==='Clock').locked).toBe(true);
+ await row.locator('.layer-state[title="Hide layer"]').click();
+ doc=await projectSnapshot(page);
+ expect(doc.elements.find(e=>e.name==='Clock').hidden).toBe(true);
+ await page.locator('[data-action="undo"]').click();
+ doc=await projectSnapshot(page);
+ expect(doc.elements.find(e=>e.name==='Clock').hidden).toBe(false);
+});
+
+test('numeric alignment across multiple objects and bounded inspector inputs',async({page})=>{
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
+ await page.locator('.layer-row').filter({hasText:'Ticker label'}).locator('.layer-select').click({modifiers:['Shift']});
+ await page.locator('[data-align="top"]').click();
+ const aligned=await projectSnapshot(page);
+ expect(aligned.elements.find(e=>e.name==='Clock').y).toBe(aligned.elements.find(e=>e.name==='Ticker label').y);
+ await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
+ await page.locator('[data-field="opacity"]').fill('999');
+ await page.locator('[data-field="opacity"]').press('Tab');
+ await expect(page.locator('[data-field="opacity"]')).toHaveValue('100');
+ const constrained=await projectSnapshot(page);
+ expect(constrained.elements.find(e=>e.name==='Clock').opacity).toBe(1);
+});
+
+test('custom output dimensions, aspect confirmation and source geometry remain distinct',async({page})=>{
+ page.on('dialog',d=>d.accept());
+ await page.goto('/');
+ await page.locator('[data-action="export"]').click();
+ await page.locator('#exportResolution').selectOption('custom');
+ await page.locator('#keepAspect').uncheck();
+ await page.locator('#exportWidth').fill('990');
+ await page.locator('#exportWidth').press('Tab');
+ await page.locator('#exportHeight').fill('700');
+ await page.locator('#exportHeight').press('Tab');
+ await expect(page.locator('#exportAspectInfo')).toContainText('stretching');
+ const pending=page.waitForEvent('download');
+ await page.locator('#exportDialog button[value="export"]').click();
+ const png=await fs.readFile(await (await pending).path());
+ expect(pngDims(png)).toEqual({width:990,height:700});
+ const doc=await projectSnapshot(page);
+ expect(doc.width).toBe(1920);expect(doc.height).toBe(1080);
+});
