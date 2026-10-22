@@ -66,8 +66,18 @@ export async function importFont(file) {
   const font={id:uuid(),family,name:file.name,data};
   await loadFont(font);return font;
 }
+const faceCache=new Map();
 export async function loadFont(font) {
-  const face=new FontFace(font.family,'url("'+font.data+'")');await face.load();document.fonts.add(face);return face;
+  const key=font.family+'\0'+font.data.length+'\0'+font.data.slice(-128);
+  if(faceCache.has(key))return faceCache.get(key);
+  const face=new FontFace(font.family,'url("'+font.data+'")');
+  await face.load();document.fonts.add(face);faceCache.set(key,face);
+  // Avoid retaining every font ever used when projects are switched frequently.
+  while(faceCache.size>64){
+    const oldest=faceCache.keys().next().value,stale=faceCache.get(oldest);
+    faceCache.delete(oldest);document.fonts.delete(stale);
+  }
+  return face;
 }
 export async function loadResources(doc) {
   if(Object.keys(doc.assets).length>LIMITS.assets||Object.keys(doc.fonts).length>LIMITS.fonts)throw Error('Too many embedded resources');
