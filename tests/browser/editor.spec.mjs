@@ -323,3 +323,42 @@ test('custom channel logo and identity survive preset replacement and project do
  expect(logo.type).toBe('image');
  expect(doc.assets[logo.assetId].mime).toBe('image/png');
 });
+
+
+test('120-layer scene survives render, numeric editing and full-HD export',async({page})=>{
+ await page.goto('/');
+ const doc=await page.evaluate(async()=>{
+   const {createDocument,makeElement}=await import('/src/model.js');
+   const elements=Array.from({length:120},(_,i)=>makeElement(i%7===0?'text':'rect',{
+      name:'Stress layer '+i,x:(i*63)%1750,y:(i*37)%900,w:130,h:65,
+      fill:['#21568f','#31a1a9','#a93c55'][i%3],
+      text:'BULLETIN '+i,fontSize:22,rotation:i%3*8,opacity:.85
+   }));
+   return createDocument({title:'120 Layer Fixture',elements});
+ });
+ await page.locator('#projectFile').setInputFiles({name:'stress.tvnews.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(doc))});
+ await expect(page.locator('#projectTitle')).toHaveValue('120 Layer Fixture');
+ await page.locator('[data-tab="layers"]').click();await expect(page.locator('#layerCount')).toHaveText('120');
+ await page.locator('.layer-select').first().click();
+ await page.locator('[data-field="x"]').fill('180');
+ await page.locator('[data-field="x"]').press('Tab');
+ const png=await exportDownload(page,'1920x1080');
+ expect(pngDims(png)).toEqual({width:1920,height:1080});
+ expect(png.length).toBeGreaterThan(15000);
+});
+
+test('custom preset is reusable as independent editable native layers',async({page})=>{
+ page.on('dialog',d=>d.accept());
+ await page.goto('/');
+ await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
+ await page.locator('[data-field="text"]').fill('TEST CLOCK');await page.locator('[data-field="text"]').press('Tab');
+ await page.locator('[data-tab="presets"]').click();
+ await page.locator('#presetName').fill('My Snapshot');
+ await page.locator('[data-action="save-preset"]').click();
+ await page.locator('#presetList .preset').nth(2).click();
+ await page.locator('#customPresetList .preset').first().click();
+ await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
+ await expect(page.locator('[data-field="text"]')).toHaveValue('TEST CLOCK');
+});
