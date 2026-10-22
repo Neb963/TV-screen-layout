@@ -92,14 +92,18 @@ function drawPlaceholder(ctx,e,label='DROP IMAGE HERE'){
 export function drawScene(ctx,doc,resources={images:new Map()}) {
   ctx.save();
   ctx.fillStyle=doc.background || '#111827';ctx.fillRect(0,0,doc.width,doc.height);
+  // Canvas shadowBlur and shadow offsets are defined in output device-space,
+  // unlike strokes and geometry. Convert document-space effects explicitly.
+  const matrix=ctx.getTransform(),shadowScaleX=Math.hypot(matrix.a,matrix.b),
+    shadowScaleY=Math.hypot(matrix.c,matrix.d),shadowScale=Math.sqrt(shadowScaleX*shadowScaleY);
   for(const e of doc.elements){
     if(e.hidden)continue;
     ctx.save();
     const cx=e.x+e.w/2,cy=e.y+e.h/2;
     ctx.translate(cx,cy);ctx.rotate((e.rotation||0)*Math.PI/180);
     ctx.globalAlpha=Number.isFinite(e.opacity)?e.opacity:1;
-    ctx.shadowColor=e.shadowColor||'transparent';ctx.shadowBlur=Math.max(0,e.shadowBlur||0);
-    ctx.shadowOffsetX=e.shadowX||0;ctx.shadowOffsetY=e.shadowY||0;
+    ctx.shadowColor=e.shadowColor||'transparent';ctx.shadowBlur=Math.max(0,e.shadowBlur||0)*shadowScale;
+    ctx.shadowOffsetX=(e.shadowX||0)*shadowScaleX;ctx.shadowOffsetY=(e.shadowY||0)*shadowScaleY;
     if(e.type==='text'){
       ctx.translate(-e.w/2,-e.h/2);
       drawText(ctx,e);
