@@ -22,7 +22,7 @@ npm run test:e2e
 The browser suite starts its own Python HTTP server using Playwright's webServer configuration. CI runs Node tests and real Chromium/Firefox workflows.
 
 ## Main workflows
-Choose one of five editable news-screen presets in the left sidebar; a Fox-inspired breaking-news layout is included without external brand logos. Click objects in the canvas or use **Layers** to select them; drag to move, use the eight handles to resize and the circle above a selected object to rotate. The right inspector offers exact geometry and typography. Shift-click to multi-select, then align/group; layer rows can be hidden/locked/reordered.
+Choose one of eight editable news-screen presets in the left sidebar; a Fox-inspired breaking-news layout is included without external brand logos. Click objects in the canvas or use **Layers** to select them; drag to move, use the eight handles to resize and the circle above a selected object to rotate. The right inspector offers exact geometry and typography. Shift-click to multi-select, then align/group; layer rows can be hidden/locked/reordered.
 
 Add text, rectangles, ellipses, image regions, or PNG/JPEG/SVG images. Select an image/placeholder then **Fill/Replace image** to preserve its frame. Crop percentages define a non-destructive source window; `Cover`, `Contain` and `Stretch` control fitting. Import custom .woff/.woff2/.ttf/.otf fonts from a selected text layer. The **Channels** tab controls title, palette, font and embedded logo; save identities and reusable editable presets locally.
 
