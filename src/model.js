@@ -121,6 +121,14 @@ export function validateDocument(doc) {
   if (!doc.assets || typeof doc.assets !== 'object' || Array.isArray(doc.assets) || Object.keys(doc.assets).length > LIMITS.assets) throw Error('Invalid assets');
   if (!doc.fonts || typeof doc.fonts !== 'object' || Array.isArray(doc.fonts) || Object.keys(doc.fonts).length > LIMITS.fonts) throw Error('Invalid fonts');
   if (!doc.channel || typeof doc.channel !== 'object' || typeof doc.title !== 'string' || doc.title.length > 200) throw Error('Invalid project metadata');
+  if(typeof doc.background!=='string'||doc.background.length>100)throw Error('Invalid background fill');
+  if(typeof doc.channel.name!=='string'||doc.channel.name.length>80||
+     typeof doc.channel.fontFamily!=='string'||doc.channel.fontFamily.length>180)throw Error('Invalid channel identity');
+  for(const key of ['primary','accent','dark','light']){
+    if(typeof doc.channel[key]!=='string'||doc.channel[key].length>100)throw Error('Invalid channel palette');
+  }
+  if(doc.channel.logoAssetId!==null && doc.channel.logoAssetId!==undefined &&
+     !Object.hasOwn(doc.assets,doc.channel.logoAssetId))throw Error('Missing embedded channel logo');
   const ids = new Set();
   for (const e of doc.elements) {
     if (!e || !TYPES.has(e.type) || typeof e.id !== 'string' || !e.id || ids.has(e.id)) throw Error('Unsupported element, missing or repeated ID');
@@ -130,6 +138,22 @@ export function validateDocument(doc) {
     }
     if (e.w <= 0 || e.h <= 0 || e.opacity < 0 || e.opacity > 1) throw Error('Invalid element geometry/opacity');
     if (typeof e.text !== 'string' || e.text.length > 30000) throw Error('Invalid text');
+    if(typeof e.name!=='string'||e.name.length>200)throw Error('Invalid layer name');
+    if(e.groupId!==null && e.groupId!==undefined && (typeof e.groupId!=='string'||e.groupId.length>200))throw Error('Invalid group ID');
+    if(typeof e.locked!=='boolean'||typeof e.hidden!=='boolean')throw Error('Invalid lock/visibility state');
+    for(const key of ['color','borderColor','shadowColor','outlineColor']){
+      if(e[key]!==undefined&&(typeof e[key]!=='string'||e[key].length>100))throw Error('Invalid paint style: '+key);
+    }
+    if(typeof e.fill==='object'&&e.fill!==null){
+      if(e.fill.type!=='linear'||!Array.isArray(e.fill.colors)||e.fill.colors.length<2||e.fill.colors.length>16||
+         e.fill.colors.some(c=>typeof c!=='string'||c.length>100)||
+         !Number.isFinite(e.fill.angle)||Math.abs(e.fill.angle)>3600)throw Error('Invalid gradient fill');
+    }else if(typeof e.fill!=='string'||e.fill.length>100)throw Error('Invalid solid fill');
+    if(e.borderWidth<0||e.outlineWidth<0||e.shadowBlur<0||e.fontSize<=0||e.lineHeight<=0)throw Error('Invalid style dimensions');
+    if(typeof e.fontFamily!=='string'||e.fontFamily.length>180||
+       !['left','center','right'].includes(e.textAlign)||
+       !['top','middle','bottom'].includes(e.verticalAlign))throw Error('Invalid text style');
+    if(!['cover','contain','stretch'].includes(e.fit))throw Error('Invalid image fit mode');
     if ((e.type === 'image' || e.assetId) && (!e.assetId || !Object.hasOwn(doc.assets,e.assetId))) throw Error('Missing embedded image for ' + e.name);
     if (e.crop && (!['x','y','w','h'].every(k => Number.isFinite(e.crop[k])) || e.crop.w <= 0 || e.crop.h <= 0 || e.crop.x < 0 || e.crop.y < 0 || e.crop.x + e.crop.w > 1.00001 || e.crop.y + e.crop.h > 1.00001)) throw Error('Invalid crop');
   }
