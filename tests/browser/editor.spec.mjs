@@ -492,3 +492,31 @@ test('custom output dimensions, aspect confirmation and source geometry remain d
  const doc=await projectSnapshot(page);
  expect(doc.width).toBe(1920);expect(doc.height).toBe(1080);
 });
+
+
+test('internal scene paste respects native clipboard-image precedence and group identity',async({page})=>{
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
+ await page.locator('.layer-row').filter({hasText:'Ticker text'}).locator('.layer-select').click({modifiers:['Shift']});
+ await page.locator('[data-action="group"]').click();
+ await page.keyboard.press('Control+c');
+ await page.evaluate(()=>{
+   const event=new Event('paste',{bubbles:true,cancelable:true});
+   Object.defineProperty(event,'clipboardData',{value:{files:[],items:[]}});
+   document.dispatchEvent(event);
+ });
+ await expect(page.locator('#layerCount')).toHaveText('19');
+ const saved=await projectSnapshot(page),copies=saved.elements.slice(-2),originals=saved.elements.filter(e=>['Clock','Ticker text'].includes(e.name)).slice(0,2);
+ expect(copies[0].groupId).toBe(copies[1].groupId);
+ expect(copies[0].groupId).not.toBe(originals[0].groupId);
+ const png='iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGM0PlP+n4GBgYGJAQoAJUQCeYUFkNUAAAAASUVORK5CYII=';
+ await page.evaluate(data=>{
+   const bytes=Uint8Array.from(atob(data),c=>c.charCodeAt(0)),img=new File([bytes],'external.png',{type:'image/png'});
+   const event=new Event('paste',{bubbles:true,cancelable:true});
+   Object.defineProperty(event,'clipboardData',{value:{files:[img],items:[]}});
+   document.dispatchEvent(event);
+ },png);
+ await expect(page.locator('#layerCount')).toHaveText('20');
+ const after=await projectSnapshot(page);
+ expect(after.elements.at(-1).type).toBe('image');
+});
