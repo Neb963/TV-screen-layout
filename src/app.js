@@ -193,7 +193,20 @@ function applyPresetTab(tab){
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
 function fileName(){return (scene.title.trim()||'broadcast').replace(/[^a-z0-9._ -]/gi,'').replace(/\s+/g,'-').slice(0,90)||'broadcast';}
 function saveProject(){try{const json=serializeProject(scene);download(new Blob([json],{type:'application/json'}),fileName()+'.tvnews.json');dirty=false;announce('Editable project downloaded');}catch(err){announce('Save failed: '+err.message,true);}}
-async function openProject(file){if(!file)return;if(!confirmReplacement())return;try{if(file.size>45_000_000)throw Error('Project exceeds 45MB limit');const next=parseProject(await file.text());await replaceScene(next);announce('Project opened; all layers and resources retained');}catch(err){announce('Import failed; previous project preserved: '+err.message,true);}}
+async function openProject(file){
+ if(!file||!confirmReplacement())return;
+ // Claim request order *before* reading; slow project files must not override later opens.
+ const requestEpoch=++sceneReplacementEpoch;
+ try{
+   if(file.size>45_000_000)throw Error('Project exceeds 45MB limit');
+   const next=parseProject(await file.text());
+   if(requestEpoch!==sceneReplacementEpoch)return;
+   await replaceScene(next);
+   if(requestEpoch+1===sceneReplacementEpoch)announce('Project opened; all layers and resources retained');
+ }catch(err){
+   if(requestEpoch===sceneReplacementEpoch)announce('Import failed; previous project preserved: '+err.message,true);
+ }
+}
 async function addImage(file,logo=false){
  if(!file)return;
  const initialEpoch=sceneReplacementEpoch, originalTarget=selected.length===1?selected[0]:null;
