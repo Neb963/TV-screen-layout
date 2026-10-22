@@ -116,10 +116,24 @@ export function drawScene(ctx,doc,resources={images:new Map()}) {
   }
   ctx.restore();
 }
+export function selectionFrame(elements) {
+  if(!elements.length)return null;
+  let minx=Infinity,miny=Infinity,maxx=-Infinity,maxy=-Infinity;
+  for(const e of elements) {
+    const cx=e.x+e.w/2,cy=e.y+e.h/2,r=(e.rotation||0)*Math.PI/180;
+    for(const x of [-e.w/2,e.w/2])for(const y of [-e.h/2,e.h/2]){
+      const px=cx+x*Math.cos(r)-y*Math.sin(r),py=cy+x*Math.sin(r)+y*Math.cos(r);
+      minx=Math.min(minx,px);miny=Math.min(miny,py);maxx=Math.max(maxx,px);maxy=Math.max(maxy,py);
+    }
+  }
+  return {x:minx,y:miny,w:maxx-minx,h:maxy-miny,rotation:0,locked:false};
+}
 export function drawOverlay(ctx,doc,selected=[],scale=1,guides=true) {
   ctx.save();ctx.lineWidth=Math.max(1,2/scale);ctx.strokeStyle='#6eb0ff';
   const radius=5/scale;
-  for(const e of doc.elements.filter(e=>selected.includes(e.id) && !e.hidden)){
+  const selectedElements=doc.elements.filter(e=>selected.includes(e.id) && !e.hidden);
+  const displays=selectedElements.length>1?[selectionFrame(selectedElements)]:selectedElements;
+  for(const e of displays){
     ctx.save();ctx.translate(e.x+e.w/2,e.y+e.h/2);ctx.rotate((e.rotation||0)*Math.PI/180);
     ctx.strokeRect(-e.w/2,-e.h/2,e.w,e.h);
     ctx.fillStyle=e.locked?'#fbbf24':'#e8f5ff';
