@@ -472,9 +472,17 @@ $('exportDialog').addEventListener('close',async()=>{
  }catch(err){announce('Export failed; project unchanged: '+err.message,true);}
 });
 new ResizeObserver(()=>{computeFit();requestDraw();}).observe(viewport);
-document.querySelector('.canvas-toolbar').addEventListener('click',ev=>{
- if(window.innerWidth<591&&ev.target===ev.currentTarget){leftSidebar.classList.toggle('open');rightSidebar.classList.remove('open');}
- else if(window.innerWidth<851&&ev.target===ev.currentTarget){rightSidebar.classList.toggle('open');leftSidebar.classList.remove('open');}
+$('sidebarToggle').addEventListener('click',()=>{
+ const open=leftSidebar.classList.toggle('open');
+ rightSidebar.classList.remove('open');
+ $('sidebarToggle').setAttribute('aria-expanded',String(open));
+ $('inspectorToggle').setAttribute('aria-expanded','false');
+});
+$('inspectorToggle').addEventListener('click',()=>{
+ const open=rightSidebar.classList.toggle('open');
+ leftSidebar.classList.remove('open');
+ $('inspectorToggle').setAttribute('aria-expanded',String(open));
+ $('sidebarToggle').setAttribute('aria-expanded','false');
 });
 function init(){
  renderPresets();applyPresetTab('presets');updateUI();
