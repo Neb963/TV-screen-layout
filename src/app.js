@@ -478,8 +478,7 @@ document.addEventListener('keydown',ev=>{
  if(!editing&&ev.code==='Space'){spaceDown=true;viewport.classList.add('pan-mode');ev.preventDefault();return;}
  if(editing)return;
  const k=ev.key.toLowerCase();
- if(mod&&['z','y','d','s','o','c','v','g'].includes(k)){
-   if(k==='v'&&!clipboard.length)return;
+ if(mod&&['z','y','d','s','o','c','g'].includes(k)){
    ev.preventDefault();
    if(k==='z'){ev.shiftKey?redo():undo();return;}
    if(k==='y'){redo();return;}
@@ -488,7 +487,7 @@ document.addEventListener('keydown',ev=>{
    if(k==='o'){$('projectFile').click();return;}
    if(k==='g'){ev.shiftKey?ungroupSelected():groupSelected();return;}
    if(k==='c'){clipboard=deepCopy(scene.elements.filter(e=>selected.includes(e.id)));return;}
-   if(k==='v'&&clipboard.length){const copies=deepCopy(clipboard);change(doc=>{const ids=new Map();for(const e of copies){const old=e.id;e.id=uuid();ids.set(old,e.id);e.x+=30;e.y+=30;doc.elements.push(e);}});setSelection(copies.map(e=>e.id));return;}
+
  }
  if(k==='delete'||k==='backspace'){ev.preventDefault();removeSelected();return;}
  if(k==='escape'){if(pointer)finishPointer({pointerId:pointer.id},true);else if(cropMode){cropMode=false;renderInspector();}else clearSelection();return;}
@@ -504,7 +503,23 @@ document.addEventListener('paste',async ev=>{
  const transfer=ev.clipboardData;
  const file=[...(transfer?.files||[])].find(f=>f.type?.startsWith('image/'))
    || [...(transfer?.items||[])].filter(item=>item.kind==='file'&&item.type?.startsWith('image/')).map(item=>item.getAsFile?.()).find(Boolean);
- if(file){ev.preventDefault();await addImage(file);}
+ if(file){ev.preventDefault();await addImage(file);return;}
+ if(clipboard.length){
+   // A genuine pasted bitmap wins over previously copied scene elements.
+   ev.preventDefault();
+   const copies=deepCopy(clipboard),groupIds=new Map();
+   change(doc=>{
+     for(const item of copies){
+       item.id=uuid();item.x+=30;item.y+=30;
+       if(item.groupId){
+         if(!groupIds.has(item.groupId))groupIds.set(item.groupId,uuid());
+         item.groupId=groupIds.get(item.groupId);
+       }
+       doc.elements.push(item);
+     }
+   });
+   setSelection(copies.map(item=>item.id));
+ }
 });
 function updateExportInfo(){
  const w=Math.round(num($('exportWidth').value)),h=Math.round(num($('exportHeight').value));
