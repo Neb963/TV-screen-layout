@@ -219,3 +219,22 @@ test('custom font remains embedded and export pixels stable after project round-
  const after=await exportDownload(page,'1920x1080');
  expect(createHash('sha256').update(before).digest('hex')).toBe(createHash('sha256').update(after).digest('hex'));
 });
+
+
+test('native preset labels and headlines fit their text frames without clipping',async({page})=>{
+ await page.goto('/');
+ const overflows=await page.evaluate(async()=>{
+   const {BUILT_INS}=await import('/src/presets.js');
+   const {wrapText}=await import('/src/renderer.js');
+   const ctx=document.createElement('canvas').getContext('2d'),bad=[];
+   for(const preset of BUILT_INS){
+     for(const e of preset.make().elements.filter(e=>e.type==='text')){
+       ctx.font=(e.italic?'italic ':'')+e.fontWeight+' '+e.fontSize+'px "'+e.fontFamily+'"';
+       const lines=wrapText(ctx,e.text,Math.max(1,e.w-8),e.letterSpacing);
+       if(lines.length*e.fontSize*e.lineHeight>e.h+3)bad.push({preset:preset.id,name:e.name,lines,height:Math.round(lines.length*e.fontSize*e.lineHeight),box:e.h});
+     }
+   }
+   return bad;
+ });
+ expect(overflows).toEqual([]);
+});
