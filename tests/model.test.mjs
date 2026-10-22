@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { createDocument, makeElement, duplicate, group, ungroup, translate, alignElements, bounds, hitTest, createHistory, serializeProject, parseProject, validateDocument } from '../src/model.js';
 import { BUILT_INS, instantiatePreset, instantiateCustomPreset } from '../src/presets.js';
 import { wrapText } from '../src/renderer.js';
-test('five distinct fully native presets with editable broadcast components',()=>{
- assert.ok(BUILT_INS.length >= 5);
+test('eight distinct fully native presets with editable broadcast components',()=>{
+ assert.ok(BUILT_INS.length >= 8);
  const names=new Set();
  for(const p of BUILT_INS){
   const d=instantiatePreset(p.id);validateDocument(d);assert.equal(d.width,1920);assert.equal(d.height,1080);
