@@ -200,7 +200,7 @@ async function addImage(file,logo=false){
  const asset=await importImage(file);const next=deepCopy(scene);next.assets[asset.id]=asset;
  let ids=[];
  if(logo){
-  next.channel.logoAssetId=asset.id;applyChannel(next,next.channel);
+  const draft=readChannelForm();draft.logoAssetId=asset.id;applyChannel(next,draft);
  }else{
   const target=selected.length===1?next.elements.find(e=>e.id===selected[0]):null;
   if(target&&!target.locked&&(target.type==='image'||target.type==='placeholder')){
@@ -487,7 +487,7 @@ document.addEventListener('keydown',ev=>{
 document.addEventListener('keyup',ev=>{if(ev.code==='Space'){spaceDown=false;viewport.classList.toggle('pan-mode',activeTool==='pan');}});
 window.addEventListener('blur',()=>{spaceDown=false;if(pointer)finishPointer({pointerId:pointer.id},true);});
 document.addEventListener('paste',async ev=>{
- if(ev.target.closest('input,textarea,[contenteditable]'))return;
+ if(ev.target instanceof Element && ev.target.closest('input,textarea,[contenteditable]'))return;
  const file=[...(ev.clipboardData?.files||[])].find(f=>f.type.startsWith('image/'));
  if(file){ev.preventDefault();await addImage(file);}
 });
