@@ -252,3 +252,40 @@ test('malicious SVG hidden inside imported project is rejected transactionally',
  await expect(page.locator('#toast')).toContainText('Import failed');
  await expect(page.locator('#projectTitle')).toHaveValue(current);
 });
+
+
+test('clipboard image paste adds a portable editable layer',async({page})=>{
+ await page.goto('/');
+ const png='iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGM0PlP+n4GBgYGJAQoAJUQCeYUFkNUAAAAASUVORK5CYII=';
+ await page.evaluate(base64=>{
+  const bytes=Uint8Array.from(atob(base64),c=>c.charCodeAt(0));
+  const transfer=new DataTransfer();transfer.items.add(new File([bytes],'clipboard.png',{type:'image/png'}));
+  document.dispatchEvent(new ClipboardEvent('paste',{clipboardData:transfer,bubbles:true,cancelable:true}));
+ },png);
+ await expect(page.locator('#layerCount')).toHaveText('18');
+ const pending=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const doc=JSON.parse(await fs.readFile(await (await pending).path(),'utf8'));
+ expect(doc.elements.filter(e=>e.type==='image')).toHaveLength(1);
+ expect(Object.values(doc.assets)).toHaveLength(1);
+});
+
+test('keyboard nudge/undo/Delete and Escape drag cancellation protect document history',async({page})=>{
+ await page.goto('/');await page.locator('[data-tab="layers"]').click();
+ await page.locator('.layer-row').filter({hasText:'Clock'}).locator('.layer-select').click();
+ const start=Number(await page.locator('[data-field="x"]').inputValue());
+ await page.keyboard.press('ArrowRight');
+ await expect(page.locator('[data-field="x"]')).toHaveValue(String(start+1));
+ await page.keyboard.press('Control+z');
+ await expect(page.locator('[data-field="x"]')).toHaveValue(String(start));
+ await page.keyboard.press('Delete');
+ await expect(page.locator('#layerCount')).toHaveText('16');
+ const before=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const bytesBefore=await fs.readFile(await (await before).path());
+ const box=await page.locator('#sceneCanvas').boundingBox();
+ const x=box.x+box.width*.5,y=box.y+box.height*.55;
+ await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+50,y+35,{steps:5});
+ await page.keyboard.press('Escape');await page.mouse.up();
+ const after=page.waitForEvent('download');await page.locator('[data-action="save"]').click();
+ const bytesAfter=await fs.readFile(await (await after).path());
+ expect(bytesAfter.equals(bytesBefore)).toBe(true);
+});
