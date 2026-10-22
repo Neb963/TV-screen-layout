@@ -95,3 +95,18 @@ test('rotated align uses actual visible bounds and single selection aligns to ar
  alignElements(d,[e.id,second.id],'right');
  assert.ok(Math.abs(bounds(e).right-bounds(second).right)<1e-8);
 });
+
+
+test('malformed visual style is rejected before import can damage renderer state',()=>{
+ const baseline=createDocument({elements:[makeElement('rect')]});
+ const copy=structuredClone(baseline);
+ copy.elements[0].fill={type:'linear',colors:[],angle:0};
+ assert.throws(()=>validateDocument(copy),/Invalid gradient fill/);
+ copy.elements[0].fill='#ffffff';copy.elements[0].fontFamily={name:'not a CSS family'};
+ assert.throws(()=>validateDocument(copy),/Invalid text style/);
+ copy.elements[0].fontFamily='Arial';copy.elements[0].shadowBlur=-100;
+ assert.throws(()=>validateDocument(copy),/Invalid style dimensions/);
+ copy.elements[0].shadowBlur=0;copy.channel.logoAssetId='unknown';
+ assert.throws(()=>validateDocument(copy),/Missing embedded channel logo/);
+ assert.doesNotThrow(()=>validateDocument(baseline));
+});
