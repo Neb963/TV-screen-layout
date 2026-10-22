@@ -396,7 +396,12 @@ function setInspectorField(e,key,raw,input){
 inspector.addEventListener('change',ev=>{
  const input=ev.target.closest('[data-field]');if(!input||selected.length!==1)return;
  const key=input.dataset.field,id=selected[0];
- try{change(doc=>{const e=doc.elements.find(e=>e.id===id);if(!e||e.locked)throw Error('Layer is locked');setInspectorField(e,key,input.value,input);});}
+ try{
+   const changed=change(doc=>{const e=doc.elements.find(e=>e.id===id);if(!e||e.locked)throw Error('Layer is locked');setInspectorField(e,key,input.value,input);});
+   // Even if clamping yields the previous document value, reject the stale text
+   // displayed by the HTML input (e.g. typing 999 into a 0..100 percent field).
+   if(!changed)renderInspector();
+ }
  catch(err){announce('Invalid property: '+err.message,true);renderInspector();}
 });
 inspector.addEventListener('click',ev=>{
